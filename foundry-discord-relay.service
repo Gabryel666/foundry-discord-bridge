@@ -6,7 +6,6 @@ After=network.target
 Type=simple
 User=debian
 WorkingDirectory=/home/debian/foundry-discord-bridge/relay
-EnvironmentFile=/home/debian/foundry-discord-bridge/.env
 ExecStart=/usr/bin/node server.js
 Restart=always
 RestartSec=5
