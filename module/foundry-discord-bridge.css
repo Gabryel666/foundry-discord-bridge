@@ -1,0 +1,30 @@
+/* Foundry-Discord Bridge — Chat Styling */
+
+.discord-bridge-msg {
+  display: flex;
+  align-items: center;
+  gap: 6px;
+  padding: 4px 0;
+}
+
+.discord-bridge-msg .discord-avatar {
+  width: 24px;
+  height: 24px;
+  border-radius: 50%;
+  flex-shrink: 0;
+}
+
+.discord-bridge-msg .discord-author {
+  font-weight: 700;
+  color: #5865f2; /* Discord blurple */
+}
+
+.discord-bridge-msg .discord-content {
+  color: #dcddde;
+}
+
+/* Highlight Discord messages in chat log */
+.chat-message[data-message-id] .discord-bridge-msg {
+  border-left: 3px solid #5865f2;
+  padding-left: 8px;
+}

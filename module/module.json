@@ -1,0 +1,65 @@
+{
+  "id": "foundry-discord-bridge",
+  "title": "Foundry-Discord Bridge",
+  "description": "Bridges Foundry VTT chat with a Discord channel in real-time",
+  "version": "1.0.0",
+  "authors": [
+    {
+      "name": "Gabryel & Jasra",
+      "url": "https://github.com/Gabryel666/foundry-discord-bridge"
+    }
+  ],
+  "compatibility": {
+    "minimum": "11",
+    "verified": "12",
+    "maximum": "13"
+  },
+  "socket": true,
+  "esmodules": [
+    "foundry-discord-bridge.js"
+  ],
+  "styles": [
+    "foundry-discord-bridge.css"
+  ],
+  "url": "https://github.com/Gabryel666/foundry-discord-bridge",
+  "manifest": "https://raw.githubusercontent.com/Gabryel666/foundry-discord-bridge/main/module/module.json",
+  "download": "https://github.com/Gabryel666/foundry-discord-bridge/releases/download/v1.0.0/module.zip",
+  "settings": [
+    {
+      "key": "bridgeUrl",
+      "name": "Bridge WebSocket URL",
+      "hint": "The WebSocket URL of the bridge server (e.g., ws://your-vps:3120/foundry-bridge)",
+      "scope": "world",
+      "config": true,
+      "type": "String",
+      "default": "ws://localhost:3120/foundry-bridge"
+    },
+    {
+      "key": "bridgeEnabled",
+      "name": "Enable Bridge",
+      "hint": "Connect to the Discord bridge and relay chat messages",
+      "scope": "world",
+      "config": true,
+      "type": "Boolean",
+      "default": true
+    },
+    {
+      "key": "showDiscordMessages",
+      "name": "Show Discord Messages",
+      "hint": "Display incoming Discord messages in the Foundry chat",
+      "scope": "client",
+      "config": true,
+      "type": "Boolean",
+      "default": true
+    },
+    {
+      "key": "sendToDiscord",
+      "name": "Send to Discord",
+      "hint": "Forward Foundry chat messages to Discord",
+      "scope": "world",
+      "config": true,
+      "type": "Boolean",
+      "default": true
+    }
+  ]
+}
