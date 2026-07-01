@@ -133,8 +133,8 @@ wss://votre-serveur:3120/foundry-bridge
 | Variable | Description | Exemple |
 |----------|-------------|---------|
 | `DISCORD_TOKEN` | Token du bot Discord | *(secret)* |
-| `DISCORD_CHANNEL_ID` | ID du salon écouté | `1409510784513605712` |
-| `DISCORD_WEBHOOK_URL` | URL du webhook pour l'envoi | `https://discord.com/api/webhooks/...` |
+| `DISCORD_CHANNEL_ID` | ID du salon écouté | *(votre ID)* |
+| `DISCORD_WEBHOOK_URL` | URL du webhook pour l'envoi | *(votre webhook)* |
 | `RELAY_PORT` | Port du serveur WebSocket | `3120` |
 | `RELAY_PATH` | Chemin du WebSocket | `/foundry-bridge` |
 
