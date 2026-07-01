@@ -1,13 +1,16 @@
 /**
- * Foundry-Discord Bridge Server
+ * Foundry-Discord Bridge Server v2
  * 
- * Relays chat messages between Foundry VTT (via WebSocket) and Discord.
- * Uses the existing Jasra bot for Discord connectivity.
+ * Discord → Foundry: Polls Discord REST API for new messages, forwards via WebSocket.
+ * Foundry → Discord: The Foundry module sends directly via Discord webhook (no server needed).
+ * 
+ * Uses HTTP polling (GET) which doesn't conflict with Hermes's WebSocket gateway connection.
+ * No discord.js dependency — pure HTTP + WebSocket.
  */
 
-const { Client, GatewayIntentBits } = require('discord.js');
 const { WebSocketServer } = require('ws');
 const http = require('http');
+const https = require('https');
 const fs = require('fs');
 const path = require('path');
 
@@ -19,56 +22,106 @@ if (!fs.existsSync(configPath)) {
 }
 const config = JSON.parse(fs.readFileSync(configPath, 'utf-8'));
 
+const DISCORD_API = 'https://discord.com/api/v10';
+const BOT_TOKEN = config.discord.token;
+const CHANNEL_ID = config.discord.channelId;
+const POLL_INTERVAL = config.polling?.intervalMs || 2000;
+
 // ── State ───────────────────────────────────────────────────────────────
 const connectedClients = new Set();
-let discordChannel = null;
-let ready = false;
+let lastMessageId = null;
+let pollTimer = null;
 
-// ── Discord Client ──────────────────────────────────────────────────────
-const discord = new Client({
-  intents: [
-    GatewayIntentBits.Guilds,
-    GatewayIntentBits.GuildMessages,
-    GatewayIntentBits.MessageContent,
-  ],
-});
+// ── Discord REST helpers ────────────────────────────────────────────────
+function discordGet(endpoint) {
+  return new Promise((resolve, reject) => {
+    const url = `${DISCORD_API}${endpoint}`;
+    const req = https.get(url, {
+      headers: {
+        'Authorization': `Bot ${BOT_TOKEN}`,
+        'Content-Type': 'application/json',
+      },
+    }, (res) => {
+      let data = '';
+      res.on('data', (chunk) => data += chunk);
+      res.on('end', () => {
+        if (res.statusCode >= 200 && res.statusCode < 300) {
+          try { resolve(JSON.parse(data)); }
+          catch (e) { reject(new Error(`JSON parse error: ${e.message}`)); }
+        } else if (res.statusCode === 429) {
+          // Rate limited — will retry next poll
+          console.warn('⚠️  Discord rate limited, backing off...');
+          resolve(null);
+        } else {
+          reject(new Error(`Discord API ${res.statusCode}: ${data}`));
+        }
+      });
+    });
+    req.on('error', reject);
+    req.end();
+  });
+}
 
-discord.once('ready', () => {
-  console.log(`✅ Discord bot ready as ${discord.user.tag}`);
-  discordChannel = discord.channels.cache.get(config.discord.channelId);
-  if (!discordChannel) {
-    console.error(`❌ Channel ${config.discord.channelId} not found!`);
-    process.exit(1);
+// ── Poll for new messages ───────────────────────────────────────────────
+async function pollMessages() {
+  try {
+    const query = lastMessageId ? `?after=${lastMessageId}&limit=10` : '?limit=1';
+    const messages = await discordGet(`/channels/${CHANNEL_ID}/messages${query}`);
+
+    if (!messages || !Array.isArray(messages) || messages.length === 0) return;
+
+    // Sort oldest first
+    messages.sort((a, b) => BigInt(a.id) - BigInt(b.id));
+
+    for (const msg of messages) {
+      // Skip bot messages
+      if (msg.author.bot) {
+        lastMessageId = msg.id;
+        continue;
+      }
+
+      // Skip if we already saw this (initial load)
+      if (!lastMessageId && messages.length === 1) {
+        lastMessageId = msg.id;
+        continue;
+      }
+
+      lastMessageId = msg.id;
+
+      const payload = {
+        type: 'discord-message',
+        author: msg.member?.nick || msg.author.global_name || msg.author.username,
+        content: msg.content,
+        avatar: msg.author.avatar
+          ? `https://cdn.discordapp.com/avatars/${msg.author.id}/${msg.author.avatar}.png?size=64`
+          : null,
+        timestamp: new Date(msg.timestamp).getTime(),
+      };
+
+      broadcastToFoundry(payload);
+    }
+  } catch (err) {
+    console.error('❌ Poll error:', err.message);
   }
-  console.log(`📡 Listening on #${discordChannel.name} (${discordChannel.id})`);
-  ready = true;
-});
+}
 
-discord.on('messageCreate', (message) => {
-  // Ignore bot messages and messages from other channels
-  if (message.author.bot) return;
-  if (message.channel.id !== config.discord.channelId) return;
-
-  const payload = {
-    type: 'discord-message',
-    author: message.member?.displayName || message.author.username,
-    content: message.content,
-    avatar: message.author.displayAvatarURL({ size: 64 }),
-    timestamp: message.createdTimestamp,
-  };
-
-  broadcastToFoundry(payload);
-});
+function startPolling() {
+  // Initial fetch to set the baseline (don't replay old messages)
+  pollMessages().then(() => {
+    console.log(`📡 Polling #${CHANNEL_ID} every ${POLL_INTERVAL}ms`);
+    pollTimer = setInterval(pollMessages, POLL_INTERVAL);
+  });
+}
 
 // ── WebSocket Server ────────────────────────────────────────────────────
 const httpServer = http.createServer((req, res) => {
-  // Health check endpoint
   if (req.url === '/health') {
     res.writeHead(200, { 'Content-Type': 'application/json' });
     res.end(JSON.stringify({
       status: 'ok',
-      discord: ready,
       clients: connectedClients.size,
+      polling: !!pollTimer,
+      lastMessageId,
     }));
     return;
   }
@@ -86,34 +139,28 @@ wss.on('connection', (ws, req) => {
   console.log(`🔗 Foundry client connected from ${clientIp}`);
   connectedClients.add(ws);
 
-  // Send welcome
   ws.send(JSON.stringify({
     type: 'bridge-connected',
     message: 'Connected to Foundry-Discord Bridge',
+    clients: connectedClients.size,
   }));
 
+  // Foundry → Discord is handled by the module via webhook directly.
+  // We still listen for pings or future bidirectional needs.
   ws.on('message', (data) => {
     try {
       const msg = JSON.parse(data.toString());
-
-      if (msg.type === 'foundry-message') {
-        // Forward to Discord
-        if (discordChannel && ready) {
-          const displayName = msg.author || 'Unknown';
-          const text = `**${displayName}**: ${msg.content}`;
-          discordChannel.send(text).catch((err) => {
-            console.error('❌ Failed to send to Discord:', err.message);
-          });
-        }
+      if (msg.type === 'ping') {
+        ws.send(JSON.stringify({ type: 'pong' }));
       }
     } catch (err) {
-      console.error('❌ Invalid message from Foundry client:', err.message);
+      console.error('❌ Invalid message from client:', err.message);
     }
   });
 
   ws.on('close', () => {
     connectedClients.delete(ws);
-    console.log(`🔌 Foundry client disconnected (${connectedClients.size} remaining)`);
+    console.log(`🔌 Client disconnected (${connectedClients.size} remaining)`);
   });
 
   ws.on('error', (err) => {
@@ -122,13 +169,17 @@ wss.on('connection', (ws, req) => {
   });
 });
 
-// ── Broadcast helper ────────────────────────────────────────────────────
 function broadcastToFoundry(payload) {
   const data = JSON.stringify(payload);
+  let sent = 0;
   for (const ws of connectedClients) {
-    if (ws.readyState === 1) { // OPEN
+    if (ws.readyState === 1) {
       ws.send(data);
+      sent++;
     }
+  }
+  if (sent > 0) {
+    console.log(`📨 Discord → Foundry (${sent} client${sent > 1 ? 's' : ''}): ${payload.author}: ${payload.content.substring(0, 60)}`);
   }
 }
 
@@ -136,28 +187,19 @@ function broadcastToFoundry(payload) {
 const PORT = config.websocket.port || 3120;
 
 httpServer.listen(PORT, '0.0.0.0', () => {
-  console.log(`🌐 WebSocket bridge listening on ws://0.0.0.0:${PORT}${config.websocket.path}`);
-});
-
-discord.login(config.discord.token).catch((err) => {
-  console.error('❌ Discord login failed:', err.message);
-  process.exit(1);
+  console.log(`🌐 Bridge WebSocket on ws://0.0.0.0:${PORT}${config.websocket.path}`);
+  startPolling();
 });
 
 // ── Graceful shutdown ───────────────────────────────────────────────────
-process.on('SIGINT', () => {
+function shutdown() {
   console.log('\n🛑 Shutting down bridge...');
+  if (pollTimer) clearInterval(pollTimer);
   for (const ws of connectedClients) ws.close();
   wss.close();
-  discord.destroy();
   httpServer.close();
   process.exit(0);
-});
+}
 
-process.on('SIGTERM', () => {
-  for (const ws of connectedClients) ws.close();
-  wss.close();
-  discord.destroy();
-  httpServer.close();
-  process.exit(0);
-});
+process.on('SIGINT', shutdown);
+process.on('SIGTERM', shutdown);

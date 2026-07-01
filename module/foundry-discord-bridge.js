@@ -1,8 +1,12 @@
 /**
- * Foundry-Discord Bridge — Client Module
+ * Foundry-Discord Bridge v2 — Client Module
  * 
- * Hooks into Foundry's core ChatMessage API (system-agnostic)
- * and relays messages to/from a Discord channel via WebSocket bridge.
+ * System-agnostic bridge between Foundry VTT and Discord.
+ * 
+ * - Discord → Foundry: WebSocket connection to the bridge server
+ * - Foundry → Discord: Direct POST to Discord webhook (no server roundtrip)
+ * 
+ * Hooks into core ChatMessage API — works with any game system.
  */
 
 // ── State ───────────────────────────────────────────────────────────────
@@ -11,20 +15,26 @@ let reconnectTimer = null;
 let reconnectDelay = 2000;
 const MAX_RECONNECT_DELAY = 30000;
 
-// Track messages we sent to avoid echo loops
-const sentToDiscord = new Set();
-
 // ── Module Init ─────────────────────────────────────────────────────────
 Hooks.once('init', () => {
   console.log('Foundry-Discord Bridge | Initializing');
 
   game.settings.register('foundry-discord-bridge', 'bridgeUrl', {
     name: 'Bridge WebSocket URL',
-    hint: 'The WebSocket URL of the bridge server (e.g., ws://your-vps:3120/foundry-bridge)',
+    hint: 'WebSocket URL of the bridge server for receiving Discord messages',
     scope: 'world',
     config: true,
     type: String,
     default: 'ws://localhost:3120/foundry-bridge',
+  });
+
+  game.settings.register('foundry-discord-bridge', 'discordWebhookUrl', {
+    name: 'Discord Webhook URL',
+    hint: 'Discord webhook URL for sending Foundry messages to Discord',
+    scope: 'world',
+    config: true,
+    type: String,
+    default: '',
   });
 
   game.settings.register('foundry-discord-bridge', 'bridgeEnabled', {
@@ -62,15 +72,15 @@ Hooks.once('ready', () => {
     return;
   }
 
-  // Only GM connects to the bridge (prevents duplicate messages)
+  // Only GM connects to WebSocket (prevents duplicate messages)
   if (game.user.isGM) {
     connectBridge();
   }
 
-  ui.notifications.info('Foundry-Discord Bridge | Connecting...');
+  ui.notifications.info('Foundry-Discord Bridge | Active');
 });
 
-// ── WebSocket Connection ────────────────────────────────────────────────
+// ── WebSocket Connection (Discord → Foundry) ────────────────────────────
 function connectBridge() {
   const url = game.settings.get('foundry-discord-bridge', 'bridgeUrl');
 
@@ -84,7 +94,7 @@ function connectBridge() {
 
   ws.addEventListener('open', () => {
     console.log('Foundry-Discord Bridge | ✅ Connected to bridge');
-    reconnectDelay = 2000; // Reset backoff
+    reconnectDelay = 2000;
     ui.notifications.info('Foundry-Discord Bridge | Connected to Discord');
   });
 
@@ -120,23 +130,24 @@ function scheduleReconnect() {
 // ── Handle Incoming Discord Messages ────────────────────────────────────
 function handleBridgeMessage(msg) {
   if (msg.type === 'bridge-connected') {
-    console.log('Foundry-Discord Bridge | Bridge says:', msg.message);
+    console.log('Foundry-Discord Bridge | Bridge:', msg.message);
     return;
   }
 
   if (msg.type !== 'discord-message') return;
   if (!game.settings.get('foundry-discord-bridge', 'showDiscordMessages')) return;
 
-  // Create a chat message in Foundry from Discord
-  const content = `<div class="discord-bridge-msg">
-    <img src="${msg.avatar || ''}" class="discord-avatar" alt="" />
-    <span class="discord-author">${escapeHtml(msg.author)}</span>
-    <span class="discord-content">${escapeHtml(msg.content)}</span>
-  </div>`;
+  // Sanitize content for safe display
+  const safeAuthor = escapeHtml(msg.author);
+  const safeContent = escapeHtml(msg.content);
 
   ChatMessage.create({
-    content,
-    speaker: { alias: `💬 ${msg.author} (Discord)` },
+    content: `<div class="discord-bridge-msg">
+      ${msg.avatar ? `<img src="${escapeHtml(msg.avatar)}" class="discord-avatar" alt="" />` : ''}
+      <span class="discord-author">${safeAuthor}</span>
+      <span class="discord-content">${safeContent}</span>
+    </div>`,
+    speaker: { alias: `💬 ${safeAuthor} (Discord)` },
     type: CONST.CHAT_MESSAGE_TYPES.OTHER,
     flags: {
       'foundry-discord-bridge': { source: 'discord' },
@@ -144,58 +155,62 @@ function handleBridgeMessage(msg) {
   });
 }
 
-// ── Hook: Intercept Foundry Chat ────────────────────────────────────────
+// ── Hook: Intercept Foundry Chat → Discord Webhook ──────────────────────
 Hooks.on('createChatMessage', (message, options, userId) => {
   if (!game.settings.get('foundry-discord-bridge', 'sendToDiscord')) return;
 
-  // Don't relay our own Discord echoes back
+  // Don't relay Discord echoes back
   if (message.flags?.['foundry-discord-bridge']?.source === 'discord') return;
 
-  // Only relay from the local client to avoid duplicates
+  // Only from local client
   if (!game.user.isGM) return;
 
-  // Extract plain text content (strip HTML)
+  // Extract plain text
   const temp = document.createElement('div');
   temp.innerHTML = message.content;
-  const textContent = temp.textContent || temp.innerText || '';
+  const text = (temp.textContent || temp.innerText || '').trim();
+  if (!text) return;
 
-  if (!textContent.trim()) return;
-
-  // Get author name
   const author = message.alias || message.author?.name || 'Unknown';
 
-  sendToBridge(author, textContent.trim());
+  sendToDiscordWebhook(author, text);
 });
 
-// ── Send to Bridge ──────────────────────────────────────────────────────
-function sendToBridge(author, content) {
-  if (!ws || ws.readyState !== WebSocket.OPEN) {
-    console.warn('Foundry-Discord Bridge | Not connected, message not sent');
+// ── Send via Discord Webhook (direct, no bridge server) ─────────────────
+async function sendToDiscordWebhook(author, content) {
+  const webhookUrl = game.settings.get('foundry-discord-bridge', 'discordWebhookUrl');
+  if (!webhookUrl) {
+    console.warn('Foundry-Discord Bridge | No webhook URL configured');
     return;
   }
 
-  ws.send(JSON.stringify({
-    type: 'foundry-message',
-    author,
-    content,
-  }));
+  try {
+    const res = await fetch(webhookUrl, {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify({
+        content: `**${author}**: ${content}`,
+        username: `${author} (Foundry)`,
+      }),
+    });
+
+    if (!res.ok) {
+      console.error(`Foundry-Discord Bridge | Webhook error ${res.status}`);
+    }
+  } catch (err) {
+    console.error('Foundry-Discord Bridge | Webhook failed:', err);
+  }
 }
 
-// ── Cleanup on unload ───────────────────────────────────────────────────
+// ── Cleanup ─────────────────────────────────────────────────────────────
 Hooks.on('closeApplication', () => {
-  if (ws) {
-    ws.close();
-    ws = null;
-  }
-  if (reconnectTimer) {
-    clearTimeout(reconnectTimer);
-    reconnectTimer = null;
-  }
+  if (ws) { ws.close(); ws = null; }
+  if (reconnectTimer) { clearTimeout(reconnectTimer); reconnectTimer = null; }
 });
 
 // ── Helpers ─────────────────────────────────────────────────────────────
 function escapeHtml(text) {
   const div = document.createElement('div');
-  div.appendChild(document.createTextNode(text));
+  div.appendChild(document.createTextNode(text || ''));
   return div.innerHTML;
 }

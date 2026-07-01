@@ -1,10 +1,14 @@
 {
   "discord": {
     "token": "YOUR_BOT_TOKEN_HERE",
-    "channelId": "DISCORD_CHANNEL_ID_HERE"
+    "channelId": "DISCORD_CHANNEL_ID_HERE",
+    "webhookUrl": "YOUR_WEBHOOK_URL_HERE"
   },
   "websocket": {
     "port": 3120,
     "path": "/foundry-bridge"
+  },
+  "polling": {
+    "intervalMs": 2000
   }
 }

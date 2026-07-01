@@ -2,30 +2,44 @@
 
 Un pont en temps réel entre le chat **Foundry VTT** et un salon **Discord**.
 
-Les joueurs dans Foundry voient les messages Discord, et inversement — parfait quand certains joueurs sont sur Foundry et d'autres suivent sur Discord.
-
-## Architecture
+## Architecture (v2)
 
 ```
-┌─────────────┐    WebSocket     ┌──────────────┐    Discord API    ┌─────────────┐
-│  Module      │◄──────────────►│  Bridge       │◄────────────────►│  Bot Discord │
-│  Foundry     │  (navigateur)  │  (VPS)        │                  │  (Jasra)     │
-│  (The Forge) │                │  Node.js      │                  │              │
-└─────────────┘                └──────────────┘                  └─────────────┘
+┌─────────────┐  Webhook POST    ┌─────────────┐
+│  Module      │────────────────►│  Discord     │
+│  Foundry     │  (direct)       │  Webhook     │
+│  (The Forge) │                 └─────────────┘
+│              │
+│              │  WebSocket       ┌──────────────┐  HTTP Polling   ┌─────────────┐
+│              │◄────────────────│  Bridge       │◄───────────────│  Discord API │
+└─────────────┘  (navigateur)    │  (VPS)        │  (GET /messages)│  (Bot token) │
+                                 └──────────────┘                 └─────────────┘
 ```
+
+**Foundry → Discord** : le module envoie directement via un webhook Discord (pas besoin de passer par le bridge).  
+**Discord → Foundry** : le bridge poll l'API Discord toutes les 2 secondes et forward via WebSocket.
 
 ## Installation
 
-### 1. Le Bridge (sur le VPS)
+### 1. Créer le webhook Discord
+
+1. Va dans les paramètres du salon `#foundry` → **Intégrations** → **Webhooks**
+2. Crée un webhook, copie l'URL
+3. Tu en auras besoin pour la config Foundry
+
+### 2. Le Bridge (sur le VPS)
 
 ```bash
 cd bridge/
 cp config.example.json config.json
-# Édite config.json avec :
-#   - Le token du bot Discord (le même que Jasra)
-#   - L'ID du salon Discord dédié
-#   - Le port WebSocket (défaut: 3120)
+```
 
+Édite `config.json` :
+- `discord.token` — le token du bot Jasra (pour lire les messages)
+- `discord.channelId` — l'ID du salon `#foundry`
+- `websocket.port` — port WebSocket (défaut: 3120)
+
+```bash
 npm install
 npm start
 ```
@@ -49,41 +63,35 @@ RestartSec=5
 WantedBy=multi-user.target
 ```
 
-### 2. Le Module Foundry
-
-Dans Foundry VTT :
+### 3. Le Module Foundry
 
 1. **Settings** → **Manage Modules** → **Install Module**
-2. Dans le champ "Manifest URL", colle l'URL du manifest :
+2. Manifest URL :
    ```
    https://raw.githubusercontent.com/Gabryel666/foundry-discord-bridge/main/module/module.json
    ```
-3. Active le module dans **Manage Modules**
-4. Va dans **Settings** → **Module Settings** → **Foundry-Discord Bridge**
-5. Configure l'URL du WebSocket bridge (ex: `ws://ton-vps:3120/foundry-bridge`)
+3. Active le module, puis configure dans **Module Settings** :
+   - **Bridge WebSocket URL** : `ws://ton-vps:3120/foundry-bridge`
+   - **Discord Webhook URL** : l'URL du webhook créé à l'étape 1
 
-### 3. Configuration
+## Configuration
 
-| Paramètre | Description | Défaut |
+| Paramètre | Description | Portée |
 |-----------|-------------|--------|
-| `bridgeUrl` | URL WebSocket du bridge | `ws://localhost:3120/foundry-bridge` |
-| `bridgeEnabled` | Active/désactive la connexion | `true` |
-| `showDiscordMessages` | Affiche les messages Discord dans Foundry | `true` |
-| `sendToDiscord` | Envoie les messages Foundry vers Discord | `true` |
+| `bridgeUrl` | URL WebSocket du bridge | World |
+| `discordWebhookUrl` | Webhook Discord pour l'envoi | World |
+| `bridgeEnabled` | Active le bridge | World |
+| `showDiscordMessages` | Affiche les messages Discord dans Foundry | Client |
+| `sendToDiscord` | Envoie les messages Foundry vers Discord | World |
 
 ## Comportement
 
-- **Seul le MJ** se connecte au bridge (évite les doublons)
-- Les messages Discord apparaissent dans Foundry avec le tag `(Discord)` et la couleur blurple
-- Reconnexion automatique en cas de coupure (backoff exponentiel)
-- Les échos de messages sont filtrés pour éviter les boucles
-- Compatible avec **n'importe quel système** Foundry (utilise l'API `ChatMessage` core)
-
-## Sécurité
-
-- Le token Discord ne quitte jamais le serveur bridge
-- Les messages sont passés en plain text (pas d'injection HTML)
-- Le WebSocket n'accepte que les messages au format attendu
+- **Seul le MJ** se connecte au WebSocket (évite les doublons)
+- L'envoi Foundry→Discord se fait par **tous les clients** (webhook direct)
+- Reconnexion automatique avec backoff exponentiel
+- Les échos Discord→Foundry→Discord sont filtrés
+- Compatible **n'importe quel système** Foundry (API `ChatMessage` core)
+- Pas de dépendance discord.js côté bridge (HTTP pur + WebSocket)
 
 ## License
 
