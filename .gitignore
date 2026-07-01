@@ -1,4 +1,4 @@
 node_modules/
-bridge/config.json
 .env
 *.log
+relay/config.json
