@@ -2,180 +2,119 @@
 
 Pont en temps réel entre le chat [Foundry VTT](https://foundryvtt.com/) et un salon Discord.
 
-Les joueurs sur Foundry et ceux sur Discord voient les mêmes messages. La conversation est partagée, dans les deux sens.
+**Aucun serveur requis.** Le module se connecte directement au gateway Discord depuis le navigateur.
 
 ---
 
 ## Fonctionnement
 
 ```
-┌──────────────────┐         WebSocket          ┌──────────────────┐
-│   Foundry VTT    │◄───────────────────────────►│   Relay Server   │
-│   (module)       │                             │   (Node.js)      │
-└──────────────────┘                             └────────┬─────────┘
-                                                          │
-                                            ┌─────────────┴─────────────┐
-                                            │                           │
-                                       HTTP Polling              Discord Webhook
-                                       (GET /messages)           (POST)
-                                            │                           │
-                                            └──────────┬────────────────┘
-                                                       │
-                                                ┌──────┴──────┐
-                                                │   Discord   │
-                                                │   #foundry  │
-                                                └─────────────┘
+┌──────────────────────┐                              ┌─────────────┐
+│   Foundry VTT        │                              │   Discord   │
+│   (navigateur)       │                              │             │
+│                      │   WebSocket (gateway)        │             │
+│   ┌──────────────┐   │◄────────────────────────────►│   Gateway   │
+│   │    Module     │   │   Discord → Foundry          │             │
+│   └──────────────┘   │                              │             │
+│                      │   HTTP POST (webhook)        │             │
+│   ┌──────────────┐   │─────────────────────────────►│   #foundry  │
+│   │    Module     │   │   Foundry → Discord          │             │
+│   └──────────────┘   │                              │             │
+└──────────────────────┘                              └─────────────┘
 ```
 
-**Foundry → Discord :** le module envoie au relay, le relay poste via webhook Discord.
-**Discord → Foundry :** le relay lit les messages via l'API Discord HTTP, transmet au module via WebSocket.
+**Discord → Foundry :** le module ouvre un WebSocket vers le gateway Discord et écoute les événements `MESSAGE_CREATE` en temps réel. C'est exactement ce que fait un bot Discord, mais depuis le navigateur.
 
-Pas de bot Discord séparé. Pas de polling agressif. Le relay utilise des requêtes HTTP classiques qui ne conflit pas avec les bots existants.
-
----
-
-## Prérequis
-
-- Node.js ≥ 18
-- Un bot Discord existant avec accès au salon cible (pour la lecture)
-- Un webhook Discord sur le salon cible (pour l'envoi)
-- Foundry VTT (The Forge, self-hosted, ou local)
+**Foundry → Discord :** le module envoie un POST vers un webhook Discord. Pas besoin de bot pour l'envoi.
 
 ---
 
 ## Installation
 
-### 1. Créer le webhook Discord
+### 1. Créer un bot Discord
 
-1. Ouvrir les **paramètres du salon** → **Intégrations** → **Webhooks**
-2. Cliquer sur **Nouveau webhook**
-3. Copier l'URL du webhook
+1. Aller sur le [Discord Developer Portal](https://discord.com/developers/applications)
+2. Créer une application → **New Application**
+3. Onglet **Bot** → copier le **Token**
+4. Dans **Privileged Gateway Intents**, activer :
+   - ✅ **Server Members Intent**
+   - ✅ **Message Content Intent**
+5. Onglet **OAuth2** → **URL Generator** :
+   - Scopes : `bot`
+   - Permissions : `Read Messages/View Channel`, `Read Message History`
+6. Copier le lien généré et l'ouvrir pour inviter le bot sur votre serveur
 
-### 2. Déployer le relay
+### 2. Créer un webhook Discord
 
-```bash
-git clone https://github.com/Gabryel666/foundry-discord-bridge.git
-cd foundry-discord-bridge/relay
-npm install
-```
-
-Créer le fichier `config.json` dans le dossier `relay/` :
-
-```json
-{
-  "channelId": "VOTRE_CHANNEL_ID",
-  "webhookUrl": "https://discord.com/api/webhooks/xxxxx/yyyyy"
-}
-```
-
-Créer le fichier `.env` à la racine du projet :
-
-```env
-DISCORD_TOKEN=votre_token_bot
-RELAY_PORT=3120
-RELAY_PATH=/foundry-bridge
-```
-
-> ⚠️ `config.json` et `.env` contiennent des secrets. Les deux sont dans `.gitignore`.
-
-Lancer :
-
-```bash
-npm start
-```
-
-Pour un déploiement permanent :
-
-```bash
-# Via systemd (nécessite sudo)
-sudo cp ../foundry-discord-relay.service /etc/systemd/system/
-sudo systemctl daemon-reload
-sudo systemctl enable --now foundry-discord-relay
-
-# Ou via pm2
-pm2 start server.js --name foundry-relay
-
-# Ou via screen/tmux
-screen -S foundry-relay
-npm start
-```
+1. Paramètres du salon → **Intégrations** → **Webhooks**
+2. Créer un webhook → copier l'URL
 
 ### 3. Installer le module Foundry
 
-Dans Foundry VTT :
-
 1. **Settings** → **Manage Modules** → **Install Module**
-2. Dans le champ **Manifest URL**, coller :
+2. Dans **Manifest URL**, coller :
 
 ```
 https://raw.githubusercontent.com/Gabryel666/foundry-discord-bridge/main/module/module.json
 ```
 
-3. Activer le module dans **Manage Modules**
-4. **Settings** → **Module Settings** → **Foundry-Discord Bridge**
-5. Renseigner l'URL du relay : `ws://votre-serveur:3120/foundry-bridge`
+3. Activer le module
+4. **Settings** → **Module Settings** → **Foundry-Discord Bridge** :
+   - **Token du bot Discord** : le token copié à l'étape 1
+   - **ID du serveur Discord** : clic droit sur le serveur → Copier l'identifiant
+   - **ID du salon Discord** : clic droit sur le salon → Copier l'identifiant
+   - **URL du webhook Discord** : l'URL copiée à l'étape 2
 
-> Utiliser `wss://` si le relay est derrière un reverse proxy HTTPS, `ws://` sinon.
+> Pour trouver les IDs : activer le **Mode Développeur** dans Discord (Paramètres → Avancé)
 
 ---
 
 ## Configuration
 
-### Fichiers de configuration
-
-| Fichier | Contenu | Gitignored |
-|---------|---------|------------|
-| `.env` | Token bot, port, chemin WebSocket | ✅ |
-| `relay/config.json` | Channel ID, URL webhook | ✅ |
-| `.env.example` | Modèle vide pour `.env` | ❌ |
-| `relay/config.example.json` | Modèle vide pour `config.json` | ❌ |
-
-### Variables d'environnement (`.env`)
-
-| Variable | Description | Défaut |
-|----------|-------------|--------|
-| `DISCORD_TOKEN` | Token du bot Discord | *(requis)* |
-| `RELAY_PORT` | Port du serveur WebSocket | `3120` |
-| `RELAY_PATH` | Chemin du WebSocket | `/foundry-bridge` |
-
-### Config relay (`relay/config.json`)
-
-| Clé | Description |
-|-----|-------------|
-| `channelId` | ID du salon Discord à écouter |
-| `webhookUrl` | URL du webhook pour l'envoi de messages |
-
-### Réglages Foundry (module)
-
-| Réglage | Description | Portée |
-|---------|-------------|--------|
-| URL du relay | Adresse WebSocket du serveur | Monde |
-| Activer le bridge | Active/désactive la connexion | Monde |
-| Afficher les messages Discord | Affiche les messages entrants | Client |
+| Réglage | Description | Obligatoire |
+|---------|-------------|-------------|
+| Token du bot Discord | Token pour se connecter au gateway | ✅ |
+| ID du serveur Discord | Serveur à écouter | ✅ |
+| ID du salon Discord | Salon à écouter | ✅ |
+| URL du webhook Discord | Webhook pour l'envoi Foundry → Discord | ✅ |
+| Activer le bridge | Active/désactive la connexion | Non |
 
 ---
 
 ## Sécurité
 
-- Les secrets ne quittent jamais le serveur relay
-- `config.json` et `.env` sont exclus du versionnement
-- Le module Foundry ne contient aucun secret
-- Les messages sont transmis en texte brut (pas d'injection HTML)
-- Le relay n'a accès qu'à un seul salon Discord
-- Aucun conflit avec les bots Discord existants (HTTP, pas gateway)
+- Le token du bot est stocké dans les réglages Foundry, visibles uniquement par le MJ
+- Aucun secret n'est dans le code source du module
+- Le module ne transmet que le texte des messages (pas de données sensibles)
+- Seul le MJ actif se connecte au gateway (pas de doublons)
+
+---
+
+## Doublons
+
+Le module gère automatiquement les cas de doublons :
+
+- **Un seul MJ actif** se connecte au gateway (`game.users.activeGM.isSelf`)
+- Si un autre MJ se connecte ou se déconnecte, le rôle de "gateway owner" est transféré automatiquement
+- Les messages envoyés via le webhook ne sont pas ré-affichés dans Foundry (flag `source: 'discord'`)
+- Les messages Discord envoyés par des bots sont ignorés
+
+---
+
+## Comportement
+
+- La connexion au gateway se fait **uniquement quand un MJ est connecté** à Foundry
+- Un bouton dans la barre d'outils (icône Discord) permet de couper/reprendre la connexion
+- En cas de déconnexion, le module se reconnecte automatiquement (resume)
+- Les messages sont affichés dans le chat Foundry avec le nom et l'avatar de l'auteur Discord
 
 ---
 
 ## Mise à jour
 
-```bash
-cd foundry-discord-bridge
-git pull
-cd relay && npm install
-# Redémarrer le service
-sudo systemctl restart foundry-discord-relay
-# Ou pm2 restart foundry-relay
-```
+Le module se met à jour automatiquement via le manifest si une nouvelle version est publiée.
+
+Pour une mise à jour manuelle : **Settings** → **Manage Modules** → chercher la mise à jour.
 
 ---
 
@@ -183,30 +122,18 @@ sudo systemctl restart foundry-discord-relay
 
 | Problème | Solution |
 |----------|----------|
-| `Missing config.json` | Créer `relay/config.json` avec `channelId` et `webhookUrl` |
-| `Missing DISCORD_TOKEN` | Vérifier le fichier `.env` à la racine |
-| Pas de messages Discord dans Foundry | Vérifier l'ID du salon et les permissions du bot |
-| Pas de messages Foundry dans Discord | Vérifier l'URL du webhook dans `config.json` |
-| Module ne se connecte pas | Vérifier l'URL du relay (ws:// ou wss://) |
-| Rate limiting Discord | Le relay gère le backoff automatiquement |
+| "Configuration incomplète" | Vérifier que les 4 champs sont remplis |
+| Pas de messages Discord | Vérifier que le bot est invité sur le serveur et a les bonnes permissions |
+| Pas de messages dans Discord | Vérifier l'URL du webhook |
+| Déconnexions fréquentes | Vérifier que les **Privileged Gateway Intents** sont activés |
+| Messages en double | Vérifier qu'un seul MJ est connecté (le module gère ça normalement) |
 
 ---
 
-## Architecture technique
+## Inspiré de
 
-Le relay est un processus Node.js unique :
-
-1. **Serveur WebSocket** — accepte les connexions du module Foundry
-2. **HTTP Polling** — lit les messages Discord via REST API (toutes les 3 secondes)
-3. **Webhook** — POST vers Discord pour l'envoi de messages
-
-Le module Foundry est du JavaScript côté client :
-
-- Hook `createChatMessage` pour capturer les messages du chat
-- WebSocket vers le relay pour envoyer/recevoir
-- Affichage des messages Discord dans le chat Foundry
-- Seul le MJ se connecte au relay (évite les doublons)
-- System-agnostic (API `ChatMessage` core)
+- [discord-to-fvtt](https://github.com/eryon/discord-to-fvtt) — connexion gateway client-side
+- [foundrytodiscord](https://github.com/therealguy90/foundrytodiscord) — envoi via webhook
 
 ---
 

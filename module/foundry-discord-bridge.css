@@ -1,4 +1,4 @@
-/* Foundry-Discord Bridge — Styles */
+/* Foundry-Discord Bridge */
 
 .fdb-message {
   display: flex;
@@ -15,4 +15,8 @@
 .fdb-author {
   font-weight: 700;
   color: #5865f2;
+}
+
+.fdb-content {
+  color: #dcddde;
 }
