@@ -186,13 +186,14 @@ export function onDiscordMessage(msg) {
             flags: { [MODULE_ID]: { source: 'discord', discordId: msg.id } },
         });
     } else {
-        // Invisible / Notification: whisper to GM only (via OOC + flag)
+        // Invisible / Notification: whisper to GM only
         const gmIds = game.users.filter(u => u.isGM).map(u => u.id);
         ChatMessage.create({
             content,
             speaker: { alias: msg.author },
-            type: CONST.CHAT_MESSAGE_TYPES.OOC,
-            flags: { [MODULE_ID]: { source: 'discord', discordId: msg.id, visibleTo: gmIds } },
+            type: CONST.CHAT_MESSAGE_TYPES.WHISPER,
+            whisper: gmIds,
+            flags: { [MODULE_ID]: { source: 'discord', discordId: msg.id } },
         });
     }
 }
@@ -216,32 +217,32 @@ export function sendJasraMessage(authorName, text) {
     }).catch((err) => log('Webhook error:', err));
 }
 
-// ── Hide private Jasra messages from non-MJ users ──────────────────────
+// ── Whisper prefix handling for Jasra messages ─────────────────────────
 
 export function setupWhisperPrefixStrip() {
-    // Hide jasra-private messages from players who shouldn't see them
     Hooks.on('renderChatMessage', (message, html, data) => {
         try {
             if (!message.flags?.[MODULE_ID]?.source) return;
             const src = message.flags[MODULE_ID].source;
 
-            // Strip whisper header from discord/jasra messages
-            if (src === 'discord' || src === 'jasra-private') {
-                if (message.whisper?.length) {
-                    const el = html instanceof jQuery ? html[0] : html;
-                    if (el) {
-                        el.querySelectorAll('.whisper-to, .chat-card .whisper')
-                            .forEach(h => h.remove());
-                    }
+            const el = html instanceof jQuery ? html[0] : html;
+            if (!el) return;
+
+            if (src === 'jasra-private') {
+                // Replace "whispers to [MJ name]" with "whispers to Jasra"
+                const whisperHeader = el.querySelector('.whisper-to');
+                if (whisperHeader) {
+                    whisperHeader.textContent = whisperHeader.textContent
+                        .replace(/whispers to .+/i, 'whispers to Jasra')
+                        .replace(/chuchote à .+/i, 'chuchote à Jasra');
                 }
             }
 
-            // Hide jasra-private messages from players not in visibleTo list
-            if (src === 'jasra-private') {
-                const visibleTo = message.flags[MODULE_ID].visibleTo;
-                if (visibleTo && !visibleTo.includes(game.user.id)) {
-                    const el = html instanceof jQuery ? html[0] : html;
-                    if (el) el.style.display = 'none';
+            if (src === 'discord') {
+                // Remove whisper header from Discord messages
+                if (message.whisper?.length) {
+                    el.querySelectorAll('.whisper-to, .chat-card .whisper')
+                        .forEach(h => h.remove());
                 }
             }
         } catch (e) {
