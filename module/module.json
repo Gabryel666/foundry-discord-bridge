@@ -2,7 +2,7 @@
   "id": "foundry-discord-bridge",
   "title": "Foundry-Discord Bridge",
   "description": "Pont en temps réel entre le chat Foundry VTT et Discord. Aucun serveur requis.",
-  "version": "3.0.1",
+  "version": "3.0.2",
   "authors": [
     {
       "name": "Gabryel & Jasra",
@@ -22,51 +22,5 @@
   ],
   "url": "https://github.com/Gabryel666/foundry-discord-bridge",
   "manifest": "https://raw.githubusercontent.com/Gabryel666/foundry-discord-bridge/main/module/module.json",
-  "download": "https://github.com/Gabryel666/foundry-discord-bridge/releases/latest/download/module.zip",
-  "settings": [
-    {
-      "key": "discordToken",
-      "name": "Token du bot Discord",
-      "hint": "Token du bot Discord pour écouter les messages (visible uniquement par le MJ)",
-      "scope": "world",
-      "config": true,
-      "type": "String",
-      "default": ""
-    },
-    {
-      "key": "discordGuildId",
-      "name": "ID du serveur Discord",
-      "hint": "Identifiant du serveur Discord (clic droit sur le serveur → Copier l'identifiant)",
-      "scope": "world",
-      "config": true,
-      "type": "String",
-      "default": ""
-    },
-    {
-      "key": "discordChannelId",
-      "name": "ID du salon Discord",
-      "hint": "Identifiant du salon à écouter (clic droit sur le salon → Copier l'identifiant)",
-      "scope": "world",
-      "config": true,
-      "type": "String",
-      "default": ""
-    },
-    {
-      "key": "discordWebhookUrl",
-      "name": "URL du webhook Discord",
-      "hint": "Webhook du salon pour envoyer les messages Foundry → Discord",
-      "scope": "world",
-      "config": true,
-      "type": "String",
-      "default": ""
-    },
-    {
-      "key": "enabled",
-      "name": "Activer le bridge",
-      "scope": "world",
-      "config": true,
-      "type": "Boolean",
-      "default": true
-    }
-  ]
+  "download": "https://github.com/Gabryel666/foundry-discord-bridge/releases/latest/download/module.zip"
 }
