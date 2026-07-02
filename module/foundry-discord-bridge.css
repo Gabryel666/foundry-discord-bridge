@@ -30,26 +30,16 @@
   font-style: italic;
 }
 
-/* ── Jasra Button — Match Foundry split-button controls ─────────────── */
+/* ── Jasra Button — Inherit Foundry split-button style ──────────────── */
 
 #fdb-jasra-btn {
-  display: flex;
-  align-items: center;
-  justify-content: center;
-  width: 26px;
-  height: 26px;
-  padding: 0;
-  margin: 0;
-  background: none;
-  border: none;
-  cursor: pointer;
-  color: var(--color-text-light-highlight, #5865f2);
-  transition: all 0.15s ease;
+  /* Let ui-control class handle size, border, background */
+  /* Only override color for branding */
+  color: #5865f2;
 }
 
 #fdb-jasra-btn:hover {
   color: #7289da;
-  text-shadow: 0 0 8px rgba(88, 101, 242, 0.6);
 }
 
 #fdb-jasra-btn img {
