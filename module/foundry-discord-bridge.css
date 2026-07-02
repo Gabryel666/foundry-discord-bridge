@@ -30,35 +30,31 @@
   font-style: italic;
 }
 
-/* ── Jasra Button ─────────────────────────────────────────────────────── */
+/* ── Sidebar Button ──────────────────────────────────────────────────── */
 
-#fdb-jasra-btn {
-  flex: 0 0 30px;
-  height: 30px;
-  width: 30px;
-  margin: 0 4px 0 0;
-  padding: 0;
-  background: transparent;
-  border: 1px solid #5865f2;
-  border-radius: 4px;
-  color: #5865f2;
-  font-size: 14px;
+.fdb-sidebar-btn {
+  color: #5865f2 !important;
+  text-shadow: 0 0 6px rgba(88, 101, 242, 0.4);
+  transition: all 0.2s ease;
   cursor: pointer;
   display: flex;
   align-items: center;
   justify-content: center;
-  transition: all 0.2s ease;
+  padding: 4px;
 }
 
-#fdb-jasra-btn:hover {
-  background: rgba(88, 101, 242, 0.15);
-  border-color: #7289da;
-  color: #7289da;
-  text-shadow: 0 0 8px rgba(88, 101, 242, 0.5);
+.fdb-sidebar-btn:hover {
+  color: #7289da !important;
+  text-shadow: 0 0 10px rgba(88, 101, 242, 0.7);
 }
 
-#fdb-jasra-btn:active {
-  background: rgba(88, 101, 242, 0.3);
+.fdb-sidebar-btn img {
+  border-radius: 50%;
+  transition: box-shadow 0.2s ease;
+}
+
+.fdb-sidebar-btn:hover img {
+  box-shadow: 0 0 6px rgba(88, 101, 242, 0.6);
 }
 
 /* ── Config Form ─────────────────────────────────────────────────────── */

@@ -1,6 +1,6 @@
 import { registerSettings } from './settings.js';
 import { BridgeConfig } from './config-app.js';
-import { GatewayClient, onDiscordMessage, sendJasraMessage } from './gateway.js';
+import { GatewayClient, onDiscordMessage, sendJasraMessage, getBotInfo } from './gateway.js';
 
 const MODULE_ID = 'foundry-discord-bridge';
 const log = (...args) => console.log(`[${MODULE_ID}]`, ...args);
@@ -34,7 +34,9 @@ Hooks.once('ready', () => {
     if (game.user.isGM) {
         connectGateway();
         setupJasraIntercept();
-        injectJasraButton();
+
+        // Inject Jasra tab in right sidebar
+        Hooks.on('renderSidebarTabs', injectSidebarButton);
     }
 
     Hooks.on('closeApplication', () => {
@@ -42,86 +44,54 @@ Hooks.once('ready', () => {
     });
 });
 
-// ── Jasra Button — Universal Injection ──────────────────────────────────
+// ── Sidebar Button ──────────────────────────────────────────────────────
 
-function injectJasraButton() {
+function injectSidebarButton(sidebar, html) {
     if (buttonInjected) return;
 
-    // Try multiple strategies to find where to put the button
-    const attempt = () => {
-        if (buttonInjected) return true;
+    // Find the sidebar tabs navigation
+    const tabs = html.find('#sidebar-tabs');
+    if (!tabs.length) return;
 
-        // Strategy 1: #chat-form
-        let form = document.getElementById('chat-form');
-        if (form) {
-            const submitBtn = form.querySelector('button[type="submit"], button:not([id])');
-            if (submitBtn) {
-                const btn = createButton();
-                submitBtn.parentNode.insertBefore(btn, submitBtn);
-                buttonInjected = true;
-                log('Button injected (chat-form)');
-                return true;
-            }
-        }
+    // Create the Jasra tab button
+    const btn = $(`
+        <a class="item fdb-sidebar-btn" data-tab="jasra"
+           title="${game.i18n.localize('FDB.Button.Jasra')}">
+            <i class="fas fa-ghost"></i>
+        </a>
+    `);
 
-        // Strategy 2: .chat-input container (some systems)
-        const chatInput = document.getElementById('chat-message');
-        if (chatInput) {
-            const container = chatInput.closest('form') || chatInput.parentElement;
-            if (container) {
-                const btn = createButton();
-                container.insertBefore(btn, container.firstChild);
-                buttonInjected = true;
-                log('Button injected (chat-message parent)');
-                return true;
-            }
-        }
-
-        // Strategy 3: append to #chat-log sidebar area
-        const chatLog = document.getElementById('chat-log');
-        if (chatLog) {
-            const btn = createButton();
-            btn.style.cssText = 'position:fixed;bottom:8px;left:8px;z-index:1000;width:36px;height:36px;border-radius:50%;';
-            document.body.appendChild(btn);
-            buttonInjected = true;
-            log('Button injected (floating)');
-            return true;
-        }
-
-        return false;
-    };
-
-    // Try immediately
-    if (attempt()) return;
-
-    // Retry with delays (system might render chat later)
-    const retry = setInterval(() => {
-        if (attempt() || buttonInjected) clearInterval(retry);
-    }, 500);
-
-    // Stop after 10 seconds
-    setTimeout(() => clearInterval(retry), 10000);
-}
-
-function createButton() {
-    const btn = document.createElement('button');
-    btn.type = 'button';
-    btn.id = 'fdb-jasra-btn';
-    btn.className = 'fdb-jasra-btn';
-    btn.title = game.i18n.localize('FDB.Button.Jasra');
-    btn.innerHTML = '<i class="fas fa-ghost"></i>';
-    btn.addEventListener('click', (e) => {
-        e.preventDefault();
-        e.stopPropagation();
+    // On click: insert @Jasra prefix into chat
+    btn.on('click', (event) => {
+        event.preventDefault();
+        event.stopPropagation();
         insertJasraPrefix();
     });
-    return btn;
+
+    // Append after the last tab (settings)
+    tabs.append(btn);
+    buttonInjected = true;
+    log('Sidebar button injected');
+
+    // Try to update with bot avatar once available
+    updateSidebarAvatar();
+}
+
+function updateSidebarAvatar() {
+    const info = getBotInfo();
+    if (!info.id || !info.avatar) return;
+
+    const avatarUrl = `https://cdn.discordapp.com/avatars/${info.id}/${info.avatar}.png?size=64`;
+    const btn = document.querySelector('.fdb-sidebar-btn');
+    if (btn) {
+        btn.innerHTML = `<img src="${avatarUrl}" style="width:24px;height:24px;border-radius:50%;" alt="Jasra" />`;
+        log('Sidebar avatar updated');
+    }
 }
 
 function insertJasraPrefix() {
     const chatInput = document.getElementById('chat-message');
     if (!chatInput) {
-        // Fallback: prompt
         const msg = prompt('Message pour Jasra :');
         if (msg) sendJasraMessage(game.user.name || 'MJ', msg);
         return;
@@ -150,7 +120,6 @@ function setupJasraIntercept() {
         const mode = game.settings.get(MODULE_ID, 'chatMode');
         const authorName = game.user.name || 'MJ';
 
-        // Send to Discord via webhook
         sendJasraMessage(authorName, text);
 
         if (mode === 'invisible') {
@@ -189,7 +158,7 @@ function setupJasraIntercept() {
     });
 }
 
-// ── Gateway Connection ──────────────────────────────────────────────────
+// ── Gateway ─────────────────────────────────────────────────────────────
 
 function connectGateway() {
     const token = game.settings.get(MODULE_ID, 'discordToken');
@@ -197,7 +166,7 @@ function connectGateway() {
     const channelId = game.settings.get(MODULE_ID, 'discordChannelId');
 
     if (!token || !guildId || !channelId) {
-        log('Missing config — open Configure Bridge to set token, guild ID, channel ID');
+        log('Missing config — open Configure Bridge');
         return;
     }
 
