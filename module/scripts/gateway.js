@@ -208,8 +208,8 @@ export function sendJasraMessage(authorName, text) {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
         body: JSON.stringify({
-            content: `**${authorName}** (Foundry): ${text}`,
-            username: `${authorName} (Foundry)`
+            content: text,
+            username: authorName
         }),
     }).catch((err) => log('Webhook error:', err));
 }
