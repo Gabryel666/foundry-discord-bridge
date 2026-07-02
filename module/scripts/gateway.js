@@ -178,21 +178,23 @@ export function onDiscordMessage(msg) {
         <span class="fdb-content">${escapeHtml(msg.content)}</span>
     </div>`;
 
-    const messageData = {
-        content,
-        speaker: { alias: msg.author },
-        type: CONST.CHAT_MESSAGE_TYPES.OTHER,
-        flags: { [MODULE_ID]: { source: 'discord', discordId: msg.id } },
-    };
-
     if (mode === 'public') {
-        // Public: everyone sees Discord messages
-        ChatMessage.create(messageData);
+        ChatMessage.create({
+            content,
+            speaker: { alias: msg.author },
+            type: CONST.CHAT_MESSAGE_TYPES.IC,
+            flags: { [MODULE_ID]: { source: 'discord', discordId: msg.id } },
+        });
     } else {
         // Invisible / Notification: whisper to GM only
         const gmIds = game.users.filter(u => u.isGM).map(u => u.id);
-        messageData.whisper = gmIds;
-        ChatMessage.create(messageData);
+        ChatMessage.create({
+            content,
+            speaker: { alias: msg.author },
+            type: CONST.CHAT_MESSAGE_TYPES.WHISPER,
+            whisper: gmIds,
+            flags: { [MODULE_ID]: { source: 'discord', discordId: msg.id } },
+        });
     }
 }
 
@@ -219,13 +221,21 @@ export function sendJasraMessage(authorName, text) {
 
 export function setupWhisperPrefixStrip() {
     Hooks.on('renderChatMessage', (message, html) => {
-        // Only for our Discord messages that are whispers
-        if (!message.flags?.[MODULE_ID]?.source) return;
-        if (!message.whisper?.length) return;
+        try {
+            // Only for our Discord whisper messages
+            if (!message.flags?.[MODULE_ID]?.source) return;
+            if (message.flags[MODULE_ID].source !== 'discord') return;
+            if (!message.whisper?.length) return;
 
-        // Remove the "whispers to" header line
-        const whisperHeader = html.find('.whisper-to');
-        if (whisperHeader.length) whisperHeader.remove();
+            // Remove Foundry's auto-generated whisper header
+            const el = html instanceof jQuery ? html[0] : html;
+            if (!el) return;
+
+            const whisperHeaders = el.querySelectorAll('.whisper-to, .chat-card .whisper');
+            whisperHeaders.forEach(h => h.remove());
+        } catch (e) {
+            // Never break message rendering
+        }
     });
 }
 
