@@ -42,17 +42,20 @@ Hooks.once('ready', () => {
     });
 });
 
-// ── Chat Control Button — MutationObserver on entire document ──────────
+// ── Chat Control Button — Hooks-based injection ────────────────────────
 
 function registerChatControl() {
-    // First attempt immediately
+    // Try immediately
     tryInjectButton();
 
-    // Watch the entire document for DOM changes
-    const observer = new MutationObserver(() => {
-        tryInjectButton();
-    });
-    observer.observe(document.body, { childList: true, subtree: true });
+    // Foundry v13 moves the chat input around via _toggleNotifications.
+    // These hooks cover all the moments where the input may appear or move.
+    const tryDebounced = () => setTimeout(tryInjectButton, 50);
+    Hooks.on('renderChatLog', tryDebounced);
+    Hooks.on('changeSidebarTab', tryDebounced);
+    Hooks.on('toggleSidebar', tryDebounced);
+    Hooks.on('renderSidebar', tryDebounced);
+    Hooks.on('collapseChatLog', tryDebounced);
 }
 
 function tryInjectButton() {
@@ -84,7 +87,6 @@ function tryInjectButton() {
     log(`  inserting into: <${parent.tagName}#${parent.id || ''}.${parent.className || ''}>`);
 
     const btn = createJasraButton();
-    // Insert right before the chat input
     parent.insertBefore(btn, chatMessage);
     log('Button injected!');
     updateButtonAvatar();
