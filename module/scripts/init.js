@@ -7,6 +7,12 @@ const log = (...args) => console.log(`[${MODULE_ID}]`, ...args);
 
 let gateway = null;
 
+function escapeHtml(text) {
+    const el = document.createElement('span');
+    el.textContent = text || '';
+    return el.innerHTML;
+}
+
 // ── Init ────────────────────────────────────────────────────────────────
 
 Hooks.once('init', () => {
@@ -91,19 +97,33 @@ function setupJasraIntercept() {
         sendJasraMessage(authorName, text);
 
         if (mode === 'invisible') {
-            // Option 1: cancel message entirely — nothing in Foundry
+            // Option 1: cancel original, whisper the content to MJ only
+            ChatMessage.create({
+                content: `<div class="fdb-message"><span class="fdb-author">@Jasra:</span> <span class="fdb-content">${escapeHtml(text)}</span></div>`,
+                speaker: { alias: authorName },
+                type: CONST.CHAT_MESSAGE_TYPES.WHISPER,
+                whisper: [game.user.id],
+                flags: { [MODULE_ID]: { source: 'jasra-private' } },
+            });
             return false;
         }
 
         if (mode === 'notification') {
-            // Option 2: cancel original, show whisper notification to everyone
+            // Option 2: whisper content to MJ + notification to everyone
+            ChatMessage.create({
+                content: `<div class="fdb-message"><span class="fdb-author">@Jasra:</span> <span class="fdb-content">${escapeHtml(text)}</span></div>`,
+                speaker: { alias: authorName },
+                type: CONST.CHAT_MESSAGE_TYPES.WHISPER,
+                whisper: [game.user.id],
+                flags: { [MODULE_ID]: { source: 'jasra-private' } },
+            });
             ChatMessage.create({
                 content: `<em class="fdb-notification">[MJ] échange avec Jasra...</em>`,
                 speaker: { alias: authorName },
                 type: CONST.CHAT_MESSAGE_TYPES.OTHER,
                 flags: { [MODULE_ID]: { source: 'jasra-notify' } },
             });
-            return false; // cancel original
+            return false;
         }
 
         // Option 3: public — let the original message through
