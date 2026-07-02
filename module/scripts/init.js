@@ -45,9 +45,11 @@ Hooks.once('ready', () => {
 // ── Chat Control Button (via renderChatLog hook) ───────────────────────
 
 function registerChatControl() {
-    // renderChatLog fires when the chat sidebar is rendered
+    // Inject immediately (chat may already be rendered)
+    setTimeout(injectJasraButton, 500);
+
+    // Also inject on each chat re-render
     Hooks.on('renderChatLog', () => {
-        // Small delay to let Foundry finish its own DOM work
         setTimeout(injectJasraButton, 50);
     });
 }
