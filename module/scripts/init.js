@@ -6,7 +6,6 @@ const MODULE_ID = 'foundry-discord-bridge';
 const log = (...args) => console.log(`[${MODULE_ID}]`, ...args);
 
 let gateway = null;
-let buttonInjected = false;
 
 function escapeHtml(text) {
     const el = document.createElement('span');
@@ -34,7 +33,8 @@ Hooks.once('ready', () => {
     if (game.user.isGM) {
         connectGateway();
         setupJasraIntercept();
-        injectJasraButton();
+        // Hook into ChatLog rendering — fires every time the chat updates
+        Hooks.on('renderChatLog', onRenderChatLog);
     }
 
     Hooks.on('closeApplication', () => {
@@ -42,84 +42,33 @@ Hooks.once('ready', () => {
     });
 });
 
-// ── Jasra Button — Near Chat Input ──────────────────────────────────────
+// ── Chat Button via renderChatLog ───────────────────────────────────────
 
-function injectJasraButton() {
-    if (buttonInjected) return;
+function onRenderChatLog(chatLog, html, data) {
+    // html is a jQuery object of the rendered chat
+    // Skip if already injected
+    if (html.find('#fdb-jasra-btn').length) return;
 
-    const attempt = () => {
-        if (buttonInjected) return true;
+    // Try to find the chat input area
+    const chatForm = html.find('#chat-form');
+    if (chatForm.length) {
+        const btn = $(`<a id="fdb-jasra-btn" class="fdb-jasra-btn" title="${game.i18n.localize('FDB.Button.Jasra')}"><i class="fas fa-ghost"></i></a>`);
+        btn.on('click', (e) => { e.preventDefault(); insertJasraPrefix(); });
+        chatForm.find('#chat-message').before(btn);
+        log('Button injected via renderChatLog into chat-form');
+        updateButtonAvatar();
+        return;
+    }
 
-        // Find the whisper/visibility buttons above chat input
-        // These are inside #chat-form or near #chat-message
-        const chatForm = document.getElementById('chat-form');
-        if (!chatForm) return false;
-
-        // The visibility buttons are typically in a .chat-control-btns or similar
-        // Look for existing buttons (Everyone, GM only, etc.)
-        const existingBtns = chatForm.querySelectorAll('button, .chat-control-group button, a.button');
-
-        // If we found buttons, insert after the last one
-        if (existingBtns.length > 0) {
-            const lastBtn = existingBtns[existingBtns.length - 1];
-            const btn = createJasraButton();
-            lastBtn.parentNode.insertBefore(btn, lastBtn.nextSibling);
-            buttonInjected = true;
-            log('Button injected after chat control buttons');
-            updateButtonAvatar();
-            return true;
-        }
-
-        // Fallback: look for the input itself and prepend before it
-        const chatInput = document.getElementById('chat-message');
-        if (chatInput) {
-            const container = chatInput.closest('.flexrow') || chatInput.parentElement;
-            if (container) {
-                const btn = createJasraButton();
-                container.insertBefore(btn, container.firstChild);
-                buttonInjected = true;
-                log('Button injected before chat input');
-                updateButtonAvatar();
-                return true;
-            }
-        }
-
-        return false;
-    };
-
-    if (attempt()) return;
-
-    // Retry
-    const interval = setInterval(() => {
-        if (attempt()) clearInterval(interval);
-    }, 1000);
-
-    setTimeout(() => clearInterval(interval), 15000);
-}
-
-function createJasraButton() {
-    const btn = document.createElement('a');
-    btn.className = 'button fdb-jasra-btn';
-    btn.title = game.i18n.localize('FDB.Button.Jasra');
-    btn.innerHTML = '<i class="fas fa-ghost"></i>';
-    btn.style.cssText = 'cursor:pointer; display:flex; align-items:center; justify-content:center; margin:0 2px; padding:2px 6px; color:#5865f2; transition:all 0.2s;';
-
-    btn.addEventListener('click', (e) => {
-        e.preventDefault();
-        e.stopPropagation();
-        insertJasraPrefix();
-    });
-
-    btn.addEventListener('mouseenter', () => {
-        btn.style.color = '#7289da';
-        btn.style.textShadow = '0 0 8px rgba(88,101,242,0.5)';
-    });
-    btn.addEventListener('mouseleave', () => {
-        btn.style.color = '#5865f2';
-        btn.style.textShadow = 'none';
-    });
-
-    return btn;
+    // Fallback: find the input directly
+    const chatInput = html.find('#chat-message');
+    if (chatInput.length) {
+        const btn = $(`<a id="fdb-jasra-btn" class="fdb-jasra-btn" title="${game.i18n.localize('FDB.Button.Jasra')}"><i class="fas fa-ghost"></i></a>`);
+        btn.on('click', (e) => { e.preventDefault(); insertJasraPrefix(); });
+        chatInput.before(btn);
+        log('Button injected via renderChatLog before input');
+        updateButtonAvatar();
+    }
 }
 
 function updateButtonAvatar() {
@@ -127,7 +76,7 @@ function updateButtonAvatar() {
     if (!info.id || !info.avatar) return;
 
     const avatarUrl = `https://cdn.discordapp.com/avatars/${info.id}/${info.avatar}.png?size=64`;
-    const btn = document.querySelector('.fdb-jasra-btn');
+    const btn = document.getElementById('fdb-jasra-btn');
     if (btn) {
         btn.innerHTML = `<img src="${avatarUrl}" style="width:24px;height:24px;border-radius:50%;" alt="Jasra" />`;
         log('Button avatar updated');
