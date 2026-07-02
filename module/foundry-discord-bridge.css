@@ -23,6 +23,25 @@
   color: #dcddde;
 }
 
+/* Notification "[MJ] échange avec Jasra..." */
+.fdb-notification {
+  color: #72767d;
+  font-size: 12px;
+  font-style: italic;
+}
+
+/* Jasra button in chat controls */
+.fdb-jasra-btn {
+  color: #5865f2 !important;
+  text-shadow: 0 0 6px rgba(88, 101, 242, 0.4);
+  transition: all 0.2s ease;
+}
+
+.fdb-jasra-btn:hover {
+  color: #7289da !important;
+  text-shadow: 0 0 10px rgba(88, 101, 242, 0.7);
+}
+
 /* ── Config Form ─────────────────────────────────────────────────────── */
 
 .fdb-config-window .window-content {

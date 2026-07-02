@@ -1,9 +1,9 @@
 /**
- * Discord Gateway Client — connects directly from browser to Discord gateway.
+ * Discord Gateway Client + message routing
  */
 
 const MODULE_ID = 'foundry-discord-bridge';
-const log = (...args) => console.log(`${MODULE_ID} |`, ...args);
+const log = (...args) => console.log(`[${MODULE_ID}]`, ...args);
 
 const GATEWAY_URL = 'wss://gateway.discord.gg';
 const GATEWAY_VERSION = 10;
@@ -147,35 +147,47 @@ export class GatewayClient {
 // ── Discord → Foundry ───────────────────────────────────────────────────
 
 export function onDiscordMessage(msg) {
-    ChatMessage.create({
-        content: `<div class="fdb-message">
-            ${msg.avatar ? `<img src="${msg.avatar}" class="fdb-avatar" />` : ''}
-            <span class="fdb-author">${escapeHtml(msg.author)}</span>
-            <span class="fdb-content">${escapeHtml(msg.content)}</span>
-        </div>`,
+    const mode = game.settings.get(MODULE_ID, 'chatMode');
+    const content = `<div class="fdb-message">
+        ${msg.avatar ? `<img src="${msg.avatar}" class="fdb-avatar" />` : ''}
+        <span class="fdb-author">${escapeHtml(msg.author)}</span>
+        <span class="fdb-content">${escapeHtml(msg.content)}</span>
+    </div>`;
+
+    const messageData = {
+        content,
         speaker: { alias: `${msg.author} (Discord)` },
         type: CONST.CHAT_MESSAGE_TYPES.OTHER,
         flags: { [MODULE_ID]: { source: 'discord', discordId: msg.id } },
-    });
+    };
+
+    if (mode === 'public') {
+        // Public: everyone sees Discord messages
+        ChatMessage.create(messageData);
+    } else {
+        // Invisible / Notification: whisper to GM only
+        const gmIds = game.users.filter(u => u.isGM).map(u => u.id);
+        messageData.whisper = gmIds;
+        ChatMessage.create(messageData);
+    }
 }
 
-// ── Foundry → Discord (webhook) ─────────────────────────────────────────
+// ── Foundry → Discord (Jasra webhook) ───────────────────────────────────
 
-export function sendToDiscord(message) {
-    if (message.flags?.[MODULE_ID]?.source === 'discord') return;
-
+export function sendJasraMessage(authorName, text) {
     const webhookUrl = game.settings.get(MODULE_ID, 'discordWebhookUrl');
-    if (!webhookUrl) return;
-
-    const text = message.content.replace(/<[^>]+>/g, '').trim();
-    if (!text) return;
-
-    const author = message.alias || message.author?.name || 'Joueur';
+    if (!webhookUrl) {
+        log('No webhook URL configured');
+        return;
+    }
 
     fetch(webhookUrl, {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify({ content: `**${author}**: ${text}`, username: author }),
+        body: JSON.stringify({
+            content: `**${authorName}** (Foundry): ${text}`,
+            username: `${authorName} (Foundry)`
+        }),
     }).catch((err) => log('Webhook error:', err));
 }
 

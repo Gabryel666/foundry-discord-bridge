@@ -1,6 +1,11 @@
 {
   "FDB.Settings.Enabled.Name": "Enable Bridge",
   "FDB.Settings.Enabled.Hint": "Connect to Discord and relay chat messages",
+  "FDB.Settings.ChatMode.Name": "Chat visibility mode",
+  "FDB.Settings.ChatMode.Hint": "How Jasra conversations appear in Foundry chat",
+  "FDB.Settings.ChatMode.Invisible": "Invisible — nothing shown in Foundry",
+  "FDB.Settings.ChatMode.Notification": "Notification — '[MJ] échange avec Jasra...' for everyone",
+  "FDB.Settings.ChatMode.Public": "Public — all messages visible to everyone",
   "FDB.ConfigMenu.Name": "Foundry-Discord Bridge Configuration",
   "FDB.ConfigMenu.Label": "Configure Bridge",
   "FDB.ConfigMenu.Hint": "Set Discord token, server ID, channel ID, and webhook URL",
@@ -12,5 +17,6 @@
   "FDB.Settings.ChannelId.Name": "Discord Channel ID",
   "FDB.Settings.ChannelId.Hint": "Channel to listen to (right-click → Copy ID)",
   "FDB.Settings.WebhookUrl.Name": "Discord Webhook URL",
-  "FDB.Settings.WebhookUrl.Hint": "Webhook URL to send messages from Foundry → Discord"
+  "FDB.Settings.WebhookUrl.Hint": "Webhook URL to send messages from Foundry → Discord",
+  "FDB.Button.Jasra": "Talk to Jasra (Discord)"
 }
