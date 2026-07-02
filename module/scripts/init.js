@@ -62,6 +62,14 @@ function injectJasraButton() {
     const chatMessage = document.getElementById('chat-message');
     if (!chatMessage) return;
 
+    // Debug: log DOM structure around chat input
+    log('Chat input found. Parent chain:');
+    let el = chatMessage;
+    for (let i = 0; i < 5 && el; i++) {
+        log(`  ${el.tagName}.${el.className}#${el.id || ''}`);
+        el = el.parentElement;
+    }
+
     // In Foundry v13, the input is inside a container that also holds
     // the control buttons. Walk up to find the controls container.
     let controlBtns = null;
@@ -78,12 +86,12 @@ function injectJasraButton() {
     if (controlBtns) {
         const btn = createJasraButton();
         controlBtns.appendChild(btn);
-        log('Button injected into control group');
+        log('Button injected into control group:', controlBtns.className, 'children:', controlBtns.children.length);
     } else {
         // Fallback: insert right after the chat input
         const btn = createJasraButton();
         chatMessage.parentNode.insertBefore(btn, chatMessage.nextSibling);
-        log('Button injected after chat input (fallback)');
+        log('Button injected after chat input (fallback). Parent:', chatMessage.parentNode.className);
     }
 
     updateButtonAvatar();
