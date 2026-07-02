@@ -153,7 +153,7 @@ Hooks.once('init', () => {
     name: 'Activer le bridge',
     scope: 'world',
     config: true,
-    type: Boolean,
+    type: new foundry.data.fields.BooleanField(),
     default: true,
   });
 
@@ -162,7 +162,7 @@ Hooks.once('init', () => {
     hint: 'Token du bot Discord pour écouter les messages (visible uniquement par le MJ)',
     scope: 'world',
     config: true,
-    type: String,
+    type: new foundry.data.fields.StringField(),
     default: '',
   });
 
@@ -171,7 +171,7 @@ Hooks.once('init', () => {
     hint: 'Identifiant du serveur Discord (clic droit → Copier l\'identifiant)',
     scope: 'world',
     config: true,
-    type: String,
+    type: new foundry.data.fields.StringField(),
     default: '',
   });
 
@@ -180,7 +180,7 @@ Hooks.once('init', () => {
     hint: 'Identifiant du salon à écouter (clic droit → Copier l\'identifiant)',
     scope: 'world',
     config: true,
-    type: String,
+    type: new foundry.data.fields.StringField(),
     default: '',
   });
 
@@ -189,7 +189,7 @@ Hooks.once('init', () => {
     hint: 'Webhook du salon pour envoyer les messages Foundry → Discord',
     scope: 'world',
     config: true,
-    type: String,
+    type: new foundry.data.fields.StringField(),
     default: '',
   });
 
