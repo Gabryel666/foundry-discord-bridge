@@ -34,9 +34,8 @@ Hooks.once('ready', () => {
     if (game.user.isGM) {
         connectGateway();
         setupJasraIntercept();
-
-        // Inject Jasra tab in right sidebar
-        Hooks.on('renderSidebarTabs', injectSidebarButton);
+        // Try to inject button multiple times until it works
+        injectSidebarButton();
     }
 
     Hooks.on('closeApplication', () => {
@@ -44,37 +43,57 @@ Hooks.once('ready', () => {
     });
 });
 
-// ── Sidebar Button ──────────────────────────────────────────────────────
+// ── Sidebar Button — DOM Injection ──────────────────────────────────────
 
-function injectSidebarButton(sidebar, html) {
+function injectSidebarButton() {
     if (buttonInjected) return;
 
-    // Find the sidebar tabs navigation
-    const tabs = html.find('#sidebar-tabs');
-    if (!tabs.length) return;
+    // Try immediately
+    if (tryInject()) return;
 
-    // Create the Jasra tab button
-    const btn = $(`
-        <a class="item fdb-sidebar-btn" data-tab="jasra"
-           title="${game.i18n.localize('FDB.Button.Jasra')}">
-            <i class="fas fa-ghost"></i>
-        </a>
-    `);
+    // Retry with intervals
+    const interval = setInterval(() => {
+        if (tryInject() || buttonInjected) clearInterval(interval);
+    }, 1000);
 
-    // On click: insert @Jasra prefix into chat
-    btn.on('click', (event) => {
-        event.preventDefault();
-        event.stopPropagation();
+    // Stop after 15 seconds
+    setTimeout(() => clearInterval(interval), 15000);
+}
+
+function tryInject() {
+    if (buttonInjected) return true;
+
+    // Find sidebar tabs - multiple selectors for compatibility
+    const sidebarTabs = document.querySelector('#sidebar-tabs')
+        || document.querySelector('.sidebar-tabs')
+        || document.querySelector('[data-tab-group="sidebar"]');
+
+    if (!sidebarTabs) {
+        log('Sidebar tabs not found yet');
+        return false;
+    }
+
+    // Create button
+    const btn = document.createElement('a');
+    btn.className = 'item fdb-sidebar-btn';
+    btn.title = game.i18n.localize('FDB.Button.Jasra');
+    btn.innerHTML = '<i class="fas fa-ghost"></i>';
+
+    btn.addEventListener('click', (e) => {
+        e.preventDefault();
+        e.stopPropagation();
         insertJasraPrefix();
     });
 
-    // Append after the last tab (settings)
-    tabs.append(btn);
+    // Append to sidebar tabs
+    sidebarTabs.appendChild(btn);
     buttonInjected = true;
     log('Sidebar button injected');
 
-    // Try to update with bot avatar once available
+    // Update with bot avatar if available
     updateSidebarAvatar();
+
+    return true;
 }
 
 function updateSidebarAvatar() {
@@ -166,7 +185,7 @@ function connectGateway() {
     const channelId = game.settings.get(MODULE_ID, 'discordChannelId');
 
     if (!token || !guildId || !channelId) {
-        log('Missing config — open Configure Bridge');
+        log('Missing config');
         return;
     }
 
