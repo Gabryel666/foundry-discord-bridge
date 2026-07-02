@@ -2,7 +2,7 @@
 
 .fdb-message {
   display: flex;
-  align-items: center;
+  align-items: flex-start;
   gap: 6px;
   padding: 4px 0;
 }

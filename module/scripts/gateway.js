@@ -123,7 +123,7 @@ export class GatewayClient {
 
                     // Update button avatar if already injected
                     updateButtonAvatar();
-                } else if (t === 'MESSAGE_CREATE' && d.channel_id === this.#channelId) {
+                } else if (t === 'MESSAGE_CREATE' && d.channel_id === this.#channelId && !d.webhook_id) {
                     this.#onMessage?.({
                         id: d.id,
                         author: d.member?.nick || d.author?.global_name || d.author?.username,
