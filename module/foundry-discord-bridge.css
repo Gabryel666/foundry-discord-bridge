@@ -30,34 +30,31 @@
   font-style: italic;
 }
 
-/* ── Jasra Button — Match Foundry chat control buttons ────────────────── */
+/* ── Jasra Button — Match Foundry split-button controls ─────────────── */
 
 #fdb-jasra-btn {
-  flex: 0 0 26px;
-  height: 26px;
-  width: 26px;
-  margin: 0 2px;
-  padding: 0;
-  background: none;
-  border: 1px solid transparent;
-  border-radius: 3px;
-  color: #5865f2;
-  cursor: pointer;
-  display: inline-flex;
+  display: flex;
   align-items: center;
   justify-content: center;
+  width: 26px;
+  height: 26px;
+  padding: 0;
+  margin: 0;
+  background: none;
+  border: none;
+  cursor: pointer;
+  color: var(--color-text-light-highlight, #5865f2);
   transition: all 0.15s ease;
-  font-size: 14px;
-  line-height: 1;
 }
 
 #fdb-jasra-btn:hover {
   color: #7289da;
-  border-color: #5865f2;
-  background: rgba(88, 101, 242, 0.1);
+  text-shadow: 0 0 8px rgba(88, 101, 242, 0.6);
 }
 
 #fdb-jasra-btn img {
+  width: 22px;
+  height: 22px;
   border-radius: 50%;
   display: block;
 }
