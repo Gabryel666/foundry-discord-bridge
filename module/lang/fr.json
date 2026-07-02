@@ -1,6 +1,10 @@
 {
   "FDB.Settings.Enabled.Name": "Activer le bridge",
   "FDB.Settings.Enabled.Hint": "Se connecter à Discord et relayer les messages du chat",
+  "FDB.ConfigMenu.Name": "Configuration Foundry-Discord Bridge",
+  "FDB.ConfigMenu.Label": "Configurer le bridge",
+  "FDB.ConfigMenu.Hint": "Définir le token Discord, l'ID serveur, l'ID salon et l'URL du webhook",
+  "FDB.ConfigMenu.Save": "Sauvegarder",
   "FDB.Settings.Token.Name": "Token du bot Discord",
   "FDB.Settings.Token.Hint": "Token du bot Discord pour écouter les messages (visible uniquement par le MJ)",
   "FDB.Settings.GuildId.Name": "ID du serveur Discord",

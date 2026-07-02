@@ -1,45 +1,53 @@
+import { BridgeConfig } from './config-app.js';
+
+const MODULE_ID = 'foundry-discord-bridge';
+
 export function registerSettings() {
-    game.settings.register('foundry-discord-bridge', 'enabled', {
-        name: 'FDB.Settings.Enabled.Name',
-        hint: 'FDB.Settings.Enabled.Hint',
+    // Toggle
+    game.settings.register(MODULE_ID, 'enabled', {
+        name: game.i18n.localize('FDB.Settings.Enabled.Name'),
+        hint: game.i18n.localize('FDB.Settings.Enabled.Hint'),
         scope: 'world',
         config: true,
         type: Boolean,
         default: true
     });
 
-    game.settings.register('foundry-discord-bridge', 'discordToken', {
-        name: 'FDB.Settings.Token.Name',
-        hint: 'FDB.Settings.Token.Hint',
+    // Custom config menu — opens a dedicated form with proper input fields
+    game.settings.registerMenu(MODULE_ID, 'config', {
+        name: game.i18n.localize('FDB.ConfigMenu.Name'),
+        label: game.i18n.localize('FDB.ConfigMenu.Label'),
+        hint: game.i18n.localize('FDB.ConfigMenu.Hint'),
+        icon: 'fas fa-plug',
+        type: BridgeConfig,
+        restricted: true
+    });
+
+    // Hidden settings (not shown in SettingsConfig, managed by BridgeConfig form)
+    game.settings.register(MODULE_ID, 'discordToken', {
         scope: 'world',
-        config: true,
+        config: false,
         type: String,
         default: ''
     });
 
-    game.settings.register('foundry-discord-bridge', 'discordGuildId', {
-        name: 'FDB.Settings.GuildId.Name',
-        hint: 'FDB.Settings.GuildId.Hint',
+    game.settings.register(MODULE_ID, 'discordGuildId', {
         scope: 'world',
-        config: true,
+        config: false,
         type: String,
         default: ''
     });
 
-    game.settings.register('foundry-discord-bridge', 'discordChannelId', {
-        name: 'FDB.Settings.ChannelId.Name',
-        hint: 'FDB.Settings.ChannelId.Hint',
+    game.settings.register(MODULE_ID, 'discordChannelId', {
         scope: 'world',
-        config: true,
+        config: false,
         type: String,
         default: ''
     });
 
-    game.settings.register('foundry-discord-bridge', 'discordWebhookUrl', {
-        name: 'FDB.Settings.WebhookUrl.Name',
-        hint: 'FDB.Settings.WebhookUrl.Hint',
+    game.settings.register(MODULE_ID, 'discordWebhookUrl', {
         scope: 'world',
-        config: true,
+        config: false,
         type: String,
         default: ''
     });

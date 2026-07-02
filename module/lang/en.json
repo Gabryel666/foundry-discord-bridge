@@ -1,6 +1,10 @@
 {
   "FDB.Settings.Enabled.Name": "Enable Bridge",
   "FDB.Settings.Enabled.Hint": "Connect to Discord and relay chat messages",
+  "FDB.ConfigMenu.Name": "Foundry-Discord Bridge Configuration",
+  "FDB.ConfigMenu.Label": "Configure Bridge",
+  "FDB.ConfigMenu.Hint": "Set Discord token, server ID, channel ID, and webhook URL",
+  "FDB.ConfigMenu.Save": "Save",
   "FDB.Settings.Token.Name": "Discord Bot Token",
   "FDB.Settings.Token.Hint": "Discord bot token to listen to messages (visible only to the GM)",
   "FDB.Settings.GuildId.Name": "Discord Server ID",
