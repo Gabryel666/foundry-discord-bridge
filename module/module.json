@@ -4,15 +4,22 @@
   "description": "Pont en temps réel entre le chat Foundry VTT et Discord. Aucun serveur requis.",
   "version": "3.0.0",
   "authors": [
-    { "name": "Gabryel & Jasra", "url": "https://github.com/Gabryel666/foundry-discord-bridge" }
+    {
+      "name": "Gabryel & Jasra",
+      "url": "https://github.com/Gabryel666/foundry-discord-bridge"
+    }
   ],
   "compatibility": {
     "minimum": "11",
-    "verified": "12",
-    "maximum": "13"
+    "verified": "13",
+    "maximum": "14"
   },
-  "esmodules": ["foundry-discord-bridge.js"],
-  "styles": ["foundry-discord-bridge.css"],
+  "esmodules": [
+    "foundry-discord-bridge.js"
+  ],
+  "styles": [
+    "foundry-discord-bridge.css"
+  ],
   "url": "https://github.com/Gabryel666/foundry-discord-bridge",
   "manifest": "https://raw.githubusercontent.com/Gabryel666/foundry-discord-bridge/main/module/module.json",
   "download": "https://github.com/Gabryel666/foundry-discord-bridge/releases/latest/download/module.zip",
