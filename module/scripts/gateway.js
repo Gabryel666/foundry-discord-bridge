@@ -228,8 +228,8 @@ export function setupWhisperPrefixStrip() {
             const el = html instanceof jQuery ? html[0] : html;
             if (!el) return;
 
+            // For MJ→Jasra whispers: replace "whispers to [MJ name]" with "whispers to Jasra"
             if (src === 'jasra-private') {
-                // Replace "whispers to [MJ name]" with "whispers to Jasra"
                 const whisperHeader = el.querySelector('.whisper-to');
                 if (whisperHeader) {
                     whisperHeader.textContent = whisperHeader.textContent
@@ -238,13 +238,7 @@ export function setupWhisperPrefixStrip() {
                 }
             }
 
-            if (src === 'discord') {
-                // Remove whisper header from Discord messages
-                if (message.whisper?.length) {
-                    el.querySelectorAll('.whisper-to, .chat-card .whisper')
-                        .forEach(h => h.remove());
-                }
-            }
+            // Discord→Foundry: keep the "A : Meneur" whisper header as-is
         } catch (e) {
             // Never break message rendering
         }
