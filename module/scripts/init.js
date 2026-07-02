@@ -42,61 +42,53 @@ Hooks.once('ready', () => {
     });
 });
 
-// ── Chat Control Button (via renderChatLog hook) ───────────────────────
+// ── Chat Control Button — MutationObserver on entire document ──────────
 
 function registerChatControl() {
-    // Inject immediately (chat may already be rendered)
-    setTimeout(injectJasraButton, 500);
+    // First attempt immediately
+    tryInjectButton();
 
-    // Also inject on each chat re-render
-    Hooks.on('renderChatLog', () => {
-        setTimeout(injectJasraButton, 50);
+    // Watch the entire document for DOM changes
+    const observer = new MutationObserver(() => {
+        tryInjectButton();
     });
+    observer.observe(document.body, { childList: true, subtree: true });
 }
 
-function injectJasraButton() {
-    // Don't double-inject
-    if (document.getElementById('fdb-jasra-btn')) {
-        updateButtonAvatar();
-        return;
+function tryInjectButton() {
+    const chatMessage = document.getElementById('chat-message');
+    if (!chatMessage) return false;
+
+    // Already injected next to this input?
+    if (chatMessage.parentElement?.querySelector('#fdb-jasra-btn')) {
+        return true;
     }
 
-    const chatMessage = document.getElementById('chat-message');
-    if (!chatMessage) return;
+    // Remove orphaned button (if input was re-parented)
+    document.getElementById('fdb-jasra-btn')?.remove();
 
-    // Debug: log DOM structure around chat input
-    log('Chat input found. Parent chain:');
+    // Log the DOM structure so we can debug placement
+    log('=== Chat input found ===');
     let el = chatMessage;
-    for (let i = 0; i < 5 && el; i++) {
-        log(`  ${el.tagName}.${el.className}#${el.id || ''}`);
+    for (let i = 0; i < 6 && el; i++) {
+        const tag = el.tagName?.toLowerCase() || '?';
+        const cls = el.className ? '.' + String(el.className).trim().split(/\s+/).join('.') : '';
+        const id = el.id ? '#' + el.id : '';
+        log(`  depth ${i}: <${tag}${id}${cls}>`);
         el = el.parentElement;
     }
 
-    // In Foundry v13, the input is inside a container that also holds
-    // the control buttons. Walk up to find the controls container.
-    let controlBtns = null;
+    const parent = chatMessage.parentElement;
+    if (!parent) return false;
 
-    // Try common selectors for the controls container
-    const form = chatMessage.closest('form');
-    if (form) {
-        controlBtns = form.querySelector('.control-buttons')
-            || form.querySelector('.chat-control-btns')
-            || form.querySelector('.controls');
-    }
+    log(`  inserting into: <${parent.tagName}#${parent.id || ''}.${parent.className || ''}>`);
 
-    // If we found a control group, insert inside it (after the last child)
-    if (controlBtns) {
-        const btn = createJasraButton();
-        controlBtns.appendChild(btn);
-        log('Button injected into control group:', controlBtns.className, 'children:', controlBtns.children.length);
-    } else {
-        // Fallback: insert right after the chat input
-        const btn = createJasraButton();
-        chatMessage.parentNode.insertBefore(btn, chatMessage.nextSibling);
-        log('Button injected after chat input (fallback). Parent:', chatMessage.parentNode.className);
-    }
-
+    const btn = createJasraButton();
+    // Insert right before the chat input
+    parent.insertBefore(btn, chatMessage);
+    log('Button injected!');
     updateButtonAvatar();
+    return true;
 }
 
 function createJasraButton() {
