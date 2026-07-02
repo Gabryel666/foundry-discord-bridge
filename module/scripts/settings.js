@@ -22,9 +22,9 @@ export function registerSettings() {
         type: String,
         default: 'invisible',
         choices: {
-            'invisible': game.i18n.localize('FDB.Settings.ChatMode.Invisible'),
-            'notification': game.i18n.localize('FDB.Settings.ChatMode.Notification'),
-            'public': game.i18n.localize('FDB.Settings.ChatMode.Public')
+            'invisible': '👻 Invisible',
+            'notification': '🔔 Notification',
+            'public': '📢 Public'
         }
     });
 
@@ -38,19 +38,16 @@ export function registerSettings() {
         restricted: true
     });
 
-    // Hidden settings (managed by BridgeConfig form)
+    // Hidden settings
     game.settings.register(MODULE_ID, 'discordToken', {
         scope: 'world', config: false, type: String, default: ''
     });
-
     game.settings.register(MODULE_ID, 'discordGuildId', {
         scope: 'world', config: false, type: String, default: ''
     });
-
     game.settings.register(MODULE_ID, 'discordChannelId', {
         scope: 'world', config: false, type: String, default: ''
     });
-
     game.settings.register(MODULE_ID, 'discordWebhookUrl', {
         scope: 'world', config: false, type: String, default: ''
     });

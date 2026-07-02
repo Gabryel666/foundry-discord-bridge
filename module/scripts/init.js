@@ -6,6 +6,7 @@ const MODULE_ID = 'foundry-discord-bridge';
 const log = (...args) => console.log(`[${MODULE_ID}]`, ...args);
 
 let gateway = null;
+let jasraButtonInjected = false;
 
 function escapeHtml(text) {
     const el = document.createElement('span');
@@ -30,14 +31,12 @@ Hooks.once('ready', () => {
         return;
     }
 
-    // GM: connect gateway + intercept @Jasra
     if (game.user.isGM) {
         connectGateway();
         setupJasraIntercept();
+        // Inject Jasra button when chat renders
+        Hooks.on('renderChatLog', injectJasraButton);
     }
-
-    // Add Jasra button to chat (GM only)
-    Hooks.on('getChatControlButtons', addJasraButton);
 
     // Cleanup
     Hooks.on('closeApplication', () => {
@@ -45,28 +44,38 @@ Hooks.once('ready', () => {
     });
 });
 
-// ── Jasra Button ────────────────────────────────────────────────────────
+// ── Jasra Button Injection ──────────────────────────────────────────────
 
-function addJasraButton(controls) {
-    if (!game.user.isGM) return;
+function injectJasraButton(chatLog, html) {
+    if (jasraButtonInjected) return;
 
-    const chatControls = controls.find(c => c.name === 'chat');
-    if (!chatControls) return;
+    // Find the chat input area
+    const chatForm = html.find('#chat-form');
+    if (!chatForm.length) return;
 
-    chatControls.tools.push({
-        name: 'jasra',
-        title: game.i18n.localize('FDB.Button.Jasra'),
-        icon: 'fas fa-ghost',
-        button: true,
-        onClick: () => insertJasraPrefix()
+    // Create the button
+    const btn = $(`
+        <button type="button" id="fdb-jasra-btn" class="fdb-jasra-btn"
+                title="${game.i18n.localize('FDB.Button.Jasra')}">
+            <i class="fas fa-ghost"></i>
+        </button>
+    `);
+
+    btn.on('click', (event) => {
+        event.preventDefault();
+        insertJasraPrefix();
     });
+
+    // Insert before the send button
+    chatForm.find('button[type="submit"]').before(btn);
+    jasraButtonInjected = true;
+    log('Jasra button injected');
 }
 
 function insertJasraPrefix() {
     const chatInput = document.getElementById('chat-message');
     if (!chatInput) return;
 
-    // If already starts with @Jasra, don't duplicate
     if (chatInput.value.startsWith('@Jasra ')) {
         chatInput.focus();
         return;
@@ -74,8 +83,6 @@ function insertJasraPrefix() {
 
     chatInput.value = '@Jasra ' + chatInput.value;
     chatInput.focus();
-
-    // Move cursor to end
     chatInput.setSelectionRange(chatInput.value.length, chatInput.value.length);
 }
 
@@ -84,11 +91,10 @@ function insertJasraPrefix() {
 function setupJasraIntercept() {
     Hooks.on('preCreateChatMessage', (message, data, options, userId) => {
         const content = data.content || '';
-        if (!content.startsWith('@Jasra ')) return true; // let it through
+        if (!content.startsWith('@Jasra ')) return true;
 
-        // Extract the actual message (remove @Jasra prefix)
         const text = content.replace(/^@Jasra\s*/, '').trim();
-        if (!text) return false; // empty message, cancel
+        if (!text) return false;
 
         const mode = game.settings.get(MODULE_ID, 'chatMode');
         const authorName = game.user.name || 'MJ';
@@ -97,7 +103,7 @@ function setupJasraIntercept() {
         sendJasraMessage(authorName, text);
 
         if (mode === 'invisible') {
-            // Option 1: cancel original, whisper the content to MJ only
+            // Whisper content to MJ only — players see nothing
             ChatMessage.create({
                 content: `<div class="fdb-message"><span class="fdb-author">@Jasra:</span> <span class="fdb-content">${escapeHtml(text)}</span></div>`,
                 speaker: { alias: authorName },
@@ -109,7 +115,7 @@ function setupJasraIntercept() {
         }
 
         if (mode === 'notification') {
-            // Option 2: whisper content to MJ + notification to everyone
+            // Whisper content to MJ
             ChatMessage.create({
                 content: `<div class="fdb-message"><span class="fdb-author">@Jasra:</span> <span class="fdb-content">${escapeHtml(text)}</span></div>`,
                 speaker: { alias: authorName },
@@ -117,6 +123,7 @@ function setupJasraIntercept() {
                 whisper: [game.user.id],
                 flags: { [MODULE_ID]: { source: 'jasra-private' } },
             });
+            // Public notification
             ChatMessage.create({
                 content: `<em class="fdb-notification">[MJ] échange avec Jasra...</em>`,
                 speaker: { alias: authorName },
@@ -126,8 +133,7 @@ function setupJasraIntercept() {
             return false;
         }
 
-        // Option 3: public — let the original message through
-        // Just add a flag so we know it's a Jasra message
+        // Public: let the original message through
         message.updateSource({
             flags: { [MODULE_ID]: { source: 'jasra-public' } }
         });
