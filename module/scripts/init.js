@@ -158,7 +158,7 @@ function setupJasraIntercept() {
                 flags: { [MODULE_ID]: { source: 'jasra-private' } },
             });
             ChatMessage.create({
-                content: `<em class="fdb-notification">[MJ] échange avec Jasra...</em>`,
+                content: `<em class="fdb-notification">${escapeHtml(authorName)} échange avec Jasra...</em>`,
                 speaker: { alias: authorName },
                 type: CONST.CHAT_MESSAGE_TYPES.OTHER,
                 flags: { [MODULE_ID]: { source: 'jasra-notify' } },

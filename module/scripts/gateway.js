@@ -123,7 +123,7 @@ export class GatewayClient {
 
                     // Update button avatar if already injected
                     updateButtonAvatar();
-                } else if (t === 'MESSAGE_CREATE' && d.channel_id === this.#channelId && !d.author?.bot) {
+                } else if (t === 'MESSAGE_CREATE' && d.channel_id === this.#channelId) {
                     this.#onMessage?.({
                         id: d.id,
                         author: d.member?.nick || d.author?.global_name || d.author?.username,
@@ -224,7 +224,8 @@ export function setupWhisperPrefixStrip() {
         try {
             // Only for our Discord whisper messages
             if (!message.flags?.[MODULE_ID]?.source) return;
-            if (message.flags[MODULE_ID].source !== 'discord') return;
+            const src = message.flags[MODULE_ID].source;
+            if (src !== 'discord' && src !== 'jasra-private') return;
             if (!message.whisper?.length) return;
 
             // Remove Foundry's auto-generated whisper header
