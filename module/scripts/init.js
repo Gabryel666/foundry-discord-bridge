@@ -140,7 +140,7 @@ function setupJasraIntercept() {
 
         if (mode === 'invisible') {
             ChatMessage.create({
-                content: `<div class="fdb-message"><span class="fdb-author">@Jasra:</span> <span class="fdb-content">${escapeHtml(text)}</span></div>`,
+                content: `<div class="fdb-message"><span class="fdb-content">${escapeHtml(text)}</span></div>`,
                 speaker: { alias: authorName },
                 type: CONST.CHAT_MESSAGE_TYPES.WHISPER,
                 whisper: [game.user.id],
@@ -151,7 +151,7 @@ function setupJasraIntercept() {
 
         if (mode === 'notification') {
             ChatMessage.create({
-                content: `<div class="fdb-message"><span class="fdb-author">@Jasra:</span> <span class="fdb-content">${escapeHtml(text)}</span></div>`,
+                content: `<div class="fdb-message"><span class="fdb-content">${escapeHtml(text)}</span></div>`,
                 speaker: { alias: authorName },
                 type: CONST.CHAT_MESSAGE_TYPES.WHISPER,
                 whisper: [game.user.id],
