@@ -175,13 +175,12 @@ export function onDiscordMessage(msg) {
     const mode = game.settings.get(MODULE_ID, 'chatMode');
     const content = `<div class="fdb-message">
         ${msg.avatar ? `<img src="${msg.avatar}" class="fdb-avatar" />` : ''}
-        <span class="fdb-author">${escapeHtml(msg.author)}</span>
         <span class="fdb-content">${escapeHtml(msg.content)}</span>
     </div>`;
 
     const messageData = {
         content,
-        speaker: { alias: `${msg.author} (Discord)` },
+        speaker: { alias: msg.author },
         type: CONST.CHAT_MESSAGE_TYPES.OTHER,
         flags: { [MODULE_ID]: { source: 'discord', discordId: msg.id } },
     };
