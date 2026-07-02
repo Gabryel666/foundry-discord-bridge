@@ -42,31 +42,18 @@ Hooks.once('ready', () => {
     });
 });
 
-// ── Watch for Chat Area with MutationObserver ───────────────────────────
+// ── Watch for Chat Area ─────────────────────────────────────────────────
 
 function watchForChatArea() {
     if (buttonInjected) return;
-
-    // Try immediately
     if (tryInject()) return;
 
-    // Use MutationObserver to detect when chat area appears
-    const observer = new MutationObserver((mutations) => {
-        if (buttonInjected) {
-            observer.disconnect();
-            return;
-        }
-        if (tryInject()) {
-            observer.disconnect();
-        }
+    const observer = new MutationObserver(() => {
+        if (buttonInjected) { observer.disconnect(); return; }
+        if (tryInject()) { observer.disconnect(); }
     });
 
-    observer.observe(document.body, {
-        childList: true,
-        subtree: true
-    });
-
-    // Safety timeout
+    observer.observe(document.body, { childList: true, subtree: true });
     setTimeout(() => observer.disconnect(), 30000);
 }
 
@@ -76,45 +63,63 @@ function tryInject() {
     const chatMessage = document.getElementById('chat-message');
     if (!chatMessage) return false;
 
-    // Walk up to find the chat form container
     const chatForm = chatMessage.closest('form') || chatMessage.closest('#chat-form') || chatMessage.parentElement;
     if (!chatForm) return false;
 
-    // Find the visibility buttons — they are siblings or nearby elements
-    // Look for the control group that contains whisper buttons
-    // In Foundry v13, these are typically .control-buttons or similar
+    // Find the control buttons group (visibility buttons)
     const controlGroup = chatForm.querySelector('.control-buttons, .chat-control-btns, .controls');
+    if (!controlGroup) return false;
 
-    if (controlGroup) {
-        // Insert after the last button in the control group
+    // Find the "self only" / "uniquement moi" button — it's the last visibility button
+    // The buttons are <a> or <button> elements inside the control group
+    // The trash/clear button is typically separate or has a specific class
+    const allBtns = controlGroup.querySelectorAll('a, button');
+
+    // Find the "self" button — look for data attributes or the last one before trash
+    let selfBtn = null;
+    for (const btn of allBtns) {
+        // The whisper target buttons typically have data-whisper or similar
+        const whisper = btn.dataset?.whisper || btn.dataset?.mode;
+        if (whisper === 'self' || whisper === '0') {
+            selfBtn = btn;
+            break;
+        }
+    }
+
+    // If we found the self button, insert after it
+    if (selfBtn) {
         const btn = createJasraButton();
-        controlGroup.appendChild(btn);
+        selfBtn.parentNode.insertBefore(btn, selfBtn.nextSibling);
         buttonInjected = true;
-        log('Button injected into control group');
+        log('Button injected after "self only" button');
         updateButtonAvatar();
         return true;
     }
 
-    // Fallback: look for any buttons inside the form that look like whisper targets
-    const buttons = chatForm.querySelectorAll('button, a.button, [role="button"]');
-    if (buttons.length > 0) {
-        // Find the last button and insert after it
-        const lastBtn = buttons[buttons.length - 1];
+    // Fallback: find buttons that are NOT the trash/clear button
+    // Trash buttons typically have fa-trash or a delete class
+    let lastVisibilityBtn = null;
+    for (const btn of allBtns) {
+        const icon = btn.querySelector('i');
+        const isTrash = icon?.classList.contains('fa-trash')
+            || icon?.classList.contains('fa-delete')
+            || btn.classList.contains('delete')
+            || btn.dataset?.action === 'delete';
+        if (!isTrash) {
+            lastVisibilityBtn = btn;
+        }
+    }
+
+    if (lastVisibilityBtn) {
         const btn = createJasraButton();
-        lastBtn.parentNode.insertBefore(btn, lastBtn.nextSibling);
+        lastVisibilityBtn.parentNode.insertBefore(btn, lastVisibilityBtn.nextSibling);
         buttonInjected = true;
-        log('Button injected after last chat button');
+        log('Button injected after last visibility button');
         updateButtonAvatar();
         return true;
     }
 
-    // Last resort: insert before the textarea/input
-    const btn = createJasraButton();
-    chatMessage.parentNode.insertBefore(btn, chatMessage);
-    buttonInjected = true;
-    log('Button injected before chat input');
-    updateButtonAvatar();
-    return true;
+    return false;
 }
 
 function createJasraButton() {
@@ -136,7 +141,6 @@ function createJasraButton() {
 function updateButtonAvatar() {
     const info = getBotInfo();
     if (!info.id || !info.avatar) {
-        // Retry avatar update later
         setTimeout(updateButtonAvatar, 3000);
         return;
     }
@@ -144,7 +148,7 @@ function updateButtonAvatar() {
     const avatarUrl = `https://cdn.discordapp.com/avatars/${info.id}/${info.avatar}.png?size=64`;
     const btn = document.getElementById('fdb-jasra-btn');
     if (btn) {
-        btn.innerHTML = `<img src="${avatarUrl}" style="width:24px;height:24px;border-radius:50%;" alt="Jasra" />`;
+        btn.innerHTML = `<img src="${avatarUrl}" style="width:22px;height:22px;border-radius:50%;" alt="Jasra" />`;
         log('Button avatar updated');
     }
 }
