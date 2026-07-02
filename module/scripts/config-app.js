@@ -7,13 +7,13 @@ export class BridgeConfig extends FormApplication {
             title: game.i18n.localize('FDB.ConfigMenu.Name'),
             template: `modules/${MODULE_ID}/templates/config.html`,
             width: 500,
-            closeOnSubmit: true
+            closeOnSubmit: true,
+            classes: ['fdb-config-window']
         });
     }
 
     getData() {
         return {
-            enabled: game.settings.get(MODULE_ID, 'enabled'),
             discordToken: game.settings.get(MODULE_ID, 'discordToken'),
             discordGuildId: game.settings.get(MODULE_ID, 'discordGuildId'),
             discordChannelId: game.settings.get(MODULE_ID, 'discordChannelId'),

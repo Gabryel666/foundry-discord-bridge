@@ -1,31 +1,25 @@
 <form autocomplete="off">
     <div class="form-group">
-        <label>{{localize "FDB.Settings.Enabled.Name"}}</label>
-        <input type="checkbox" name="enabled" {{#if enabled}}checked{{/if}} />
-        <p class="notes">{{localize "FDB.Settings.Enabled.Hint"}}</p>
-    </div>
-
-    <div class="form-group">
         <label>{{localize "FDB.Settings.Token.Name"}}</label>
-        <input type="text" name="discordToken" value="{{discordToken}}" />
+        <input type="text" name="discordToken" value="{{discordToken}}" placeholder="MTxxxxxxxxxxxxxxx" />
         <p class="notes">{{localize "FDB.Settings.Token.Hint"}}</p>
     </div>
 
     <div class="form-group">
         <label>{{localize "FDB.Settings.GuildId.Name"}}</label>
-        <input type="text" name="discordGuildId" value="{{discordGuildId}}" />
+        <input type="text" name="discordGuildId" value="{{discordGuildId}}" placeholder="729311581019570186" />
         <p class="notes">{{localize "FDB.Settings.GuildId.Hint"}}</p>
     </div>
 
     <div class="form-group">
         <label>{{localize "FDB.Settings.ChannelId.Name"}}</label>
-        <input type="text" name="discordChannelId" value="{{discordChannelId}}" />
+        <input type="text" name="discordChannelId" value="{{discordChannelId}}" placeholder="1409510784513605712" />
         <p class="notes">{{localize "FDB.Settings.ChannelId.Hint"}}</p>
     </div>
 
     <div class="form-group">
         <label>{{localize "FDB.Settings.WebhookUrl.Name"}}</label>
-        <input type="text" name="discordWebhookUrl" value="{{discordWebhookUrl}}" />
+        <input type="text" name="discordWebhookUrl" value="{{discordWebhookUrl}}" placeholder="https://discord.com/api/webhooks/..." />
         <p class="notes">{{localize "FDB.Settings.WebhookUrl.Hint"}}</p>
     </div>
 

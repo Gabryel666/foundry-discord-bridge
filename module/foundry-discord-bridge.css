@@ -1,22 +1,92 @@
-/* Foundry-Discord Bridge */
+/* Foundry-Discord Bridge — Chat Styling */
 
 .fdb-message {
   display: flex;
   align-items: center;
   gap: 6px;
+  padding: 4px 0;
 }
 
-.fdb-avatar {
+.fdb-message .fdb-avatar {
   width: 24px;
   height: 24px;
   border-radius: 50%;
+  flex-shrink: 0;
 }
 
-.fdb-author {
+.fdb-message .fdb-author {
   font-weight: 700;
   color: #5865f2;
 }
 
-.fdb-content {
+.fdb-message .fdb-content {
   color: #dcddde;
+}
+
+/* ── Config Form ─────────────────────────────────────────────────────── */
+
+.fdb-config-window .window-content {
+  background: #1a1a2e;
+  color: #e0e0e0;
+}
+
+.fdb-config-window form {
+  padding: 10px;
+}
+
+.fdb-config-window .form-group {
+  margin-bottom: 12px;
+}
+
+.fdb-config-window .form-group label {
+  color: #e0e0e0;
+  font-weight: 600;
+  font-size: 13px;
+  display: block;
+  margin-bottom: 4px;
+}
+
+.fdb-config-window .form-group input[type="text"] {
+  width: 100%;
+  background: #0d0d1a;
+  border: 1px solid #3a3a5c;
+  border-radius: 4px;
+  color: #ffffff;
+  padding: 6px 8px;
+  font-size: 13px;
+  font-family: monospace;
+}
+
+.fdb-config-window .form-group input[type="text"]::placeholder {
+  color: #555580;
+}
+
+.fdb-config-window .form-group input[type="text"]:focus {
+  border-color: #5865f2;
+  outline: none;
+  box-shadow: 0 0 4px rgba(88, 101, 242, 0.4);
+}
+
+.fdb-config-window .form-group .notes {
+  color: #999999;
+  font-size: 11px;
+  margin-top: 4px;
+  font-style: italic;
+}
+
+.fdb-config-window button[type="submit"] {
+  width: 100%;
+  background: #5865f2;
+  color: #ffffff;
+  border: none;
+  border-radius: 4px;
+  padding: 8px;
+  font-size: 14px;
+  font-weight: 600;
+  cursor: pointer;
+  margin-top: 10px;
+}
+
+.fdb-config-window button[type="submit"]:hover {
+  background: #4752c4;
 }
