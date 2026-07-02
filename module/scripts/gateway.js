@@ -230,11 +230,27 @@ export function setupWhisperPrefixStrip() {
 
             // For MJ→Jasra whispers: replace "whispers to [MJ name]" with "whispers to Jasra"
             if (src === 'jasra-private') {
+                // Debug: log all elements that could be the whisper header
+                log('Jasra whisper render, classes:', el.className, 'innerHTML snippet:', el.innerHTML.substring(0, 200));
+
                 const whisperHeader = el.querySelector('.whisper-to');
                 if (whisperHeader) {
+                    log('Found .whisper-to:', whisperHeader.textContent);
                     whisperHeader.textContent = whisperHeader.textContent
                         .replace(/whispers to .+/i, 'whispers to Jasra')
                         .replace(/chuchote à .+/i, 'chuchote à Jasra');
+                } else {
+                    log('No .whisper-to found. Looking for alternatives...');
+                    // Try finding any element containing "whispers to" or "chuchote"
+                    for (const child of el.querySelectorAll('*')) {
+                        if (child.children.length === 0 && /whispers to|chuchote/i.test(child.textContent)) {
+                            log('Found alternative whisper text in:', child.tagName, child.className, child.textContent);
+                            child.textContent = child.textContent
+                                .replace(/whispers to .+/i, 'whispers to Jasra')
+                                .replace(/chuchote à .+/i, 'chuchote à Jasra');
+                            break;
+                        }
+                    }
                 }
             }
 
