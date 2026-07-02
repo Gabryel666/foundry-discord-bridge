@@ -6,6 +6,7 @@ const MODULE_ID = 'foundry-discord-bridge';
 const log = (...args) => console.log(`[${MODULE_ID}]`, ...args);
 
 let gateway = null;
+let buttonInjected = false;
 
 function escapeHtml(text) {
     const el = document.createElement('span');
@@ -33,8 +34,7 @@ Hooks.once('ready', () => {
     if (game.user.isGM) {
         connectGateway();
         setupJasraIntercept();
-        // Hook into ChatLog rendering — fires every time the chat updates
-        Hooks.on('renderChatLog', onRenderChatLog);
+        watchForChatArea();
     }
 
     Hooks.on('closeApplication', () => {
@@ -42,38 +42,104 @@ Hooks.once('ready', () => {
     });
 });
 
-// ── Chat Button via renderChatLog ───────────────────────────────────────
+// ── Watch for Chat Area with MutationObserver ───────────────────────────
 
-function onRenderChatLog(chatLog, html, data) {
-    // html is a jQuery object of the rendered chat
-    // Skip if already injected
-    if (html.find('#fdb-jasra-btn').length) return;
+function watchForChatArea() {
+    if (buttonInjected) return;
 
-    // Try to find the chat input area
-    const chatForm = html.find('#chat-form');
-    if (chatForm.length) {
-        const btn = $(`<a id="fdb-jasra-btn" class="fdb-jasra-btn" title="${game.i18n.localize('FDB.Button.Jasra')}"><i class="fas fa-ghost"></i></a>`);
-        btn.on('click', (e) => { e.preventDefault(); insertJasraPrefix(); });
-        chatForm.find('#chat-message').before(btn);
-        log('Button injected via renderChatLog into chat-form');
+    // Try immediately
+    if (tryInject()) return;
+
+    // Use MutationObserver to detect when chat area appears
+    const observer = new MutationObserver((mutations) => {
+        if (buttonInjected) {
+            observer.disconnect();
+            return;
+        }
+        if (tryInject()) {
+            observer.disconnect();
+        }
+    });
+
+    observer.observe(document.body, {
+        childList: true,
+        subtree: true
+    });
+
+    // Safety timeout
+    setTimeout(() => observer.disconnect(), 30000);
+}
+
+function tryInject() {
+    if (buttonInjected) return true;
+
+    const chatMessage = document.getElementById('chat-message');
+    if (!chatMessage) return false;
+
+    // Walk up to find the chat form container
+    const chatForm = chatMessage.closest('form') || chatMessage.closest('#chat-form') || chatMessage.parentElement;
+    if (!chatForm) return false;
+
+    // Find the visibility buttons — they are siblings or nearby elements
+    // Look for the control group that contains whisper buttons
+    // In Foundry v13, these are typically .control-buttons or similar
+    const controlGroup = chatForm.querySelector('.control-buttons, .chat-control-btns, .controls');
+
+    if (controlGroup) {
+        // Insert after the last button in the control group
+        const btn = createJasraButton();
+        controlGroup.appendChild(btn);
+        buttonInjected = true;
+        log('Button injected into control group');
         updateButtonAvatar();
-        return;
+        return true;
     }
 
-    // Fallback: find the input directly
-    const chatInput = html.find('#chat-message');
-    if (chatInput.length) {
-        const btn = $(`<a id="fdb-jasra-btn" class="fdb-jasra-btn" title="${game.i18n.localize('FDB.Button.Jasra')}"><i class="fas fa-ghost"></i></a>`);
-        btn.on('click', (e) => { e.preventDefault(); insertJasraPrefix(); });
-        chatInput.before(btn);
-        log('Button injected via renderChatLog before input');
+    // Fallback: look for any buttons inside the form that look like whisper targets
+    const buttons = chatForm.querySelectorAll('button, a.button, [role="button"]');
+    if (buttons.length > 0) {
+        // Find the last button and insert after it
+        const lastBtn = buttons[buttons.length - 1];
+        const btn = createJasraButton();
+        lastBtn.parentNode.insertBefore(btn, lastBtn.nextSibling);
+        buttonInjected = true;
+        log('Button injected after last chat button');
         updateButtonAvatar();
+        return true;
     }
+
+    // Last resort: insert before the textarea/input
+    const btn = createJasraButton();
+    chatMessage.parentNode.insertBefore(btn, chatMessage);
+    buttonInjected = true;
+    log('Button injected before chat input');
+    updateButtonAvatar();
+    return true;
+}
+
+function createJasraButton() {
+    const btn = document.createElement('a');
+    btn.id = 'fdb-jasra-btn';
+    btn.className = 'button fdb-jasra-btn';
+    btn.title = game.i18n.localize('FDB.Button.Jasra');
+    btn.innerHTML = '<i class="fas fa-ghost"></i>';
+
+    btn.addEventListener('click', (e) => {
+        e.preventDefault();
+        e.stopPropagation();
+        insertJasraPrefix();
+    });
+
+    return btn;
 }
 
 function updateButtonAvatar() {
     const info = getBotInfo();
-    if (!info.id || !info.avatar) return;
+    if (!info.id || !info.avatar) {
+        // Retry avatar update later
+        setTimeout(updateButtonAvatar, 3000);
+        return;
+    }
 
     const avatarUrl = `https://cdn.discordapp.com/avatars/${info.id}/${info.avatar}.png?size=64`;
     const btn = document.getElementById('fdb-jasra-btn');
