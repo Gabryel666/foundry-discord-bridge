@@ -47,6 +47,7 @@
   height: 22px;
   border-radius: 50%;
   display: block;
+  object-fit: cover;
 }
 
 /* ── Config Form ─────────────────────────────────────────────────────── */
