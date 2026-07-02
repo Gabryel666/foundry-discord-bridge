@@ -186,8 +186,10 @@ export function onDiscordMessage(msg) {
     };
 
     if (mode === 'public') {
+        // Public: everyone sees Discord messages
         ChatMessage.create(messageData);
     } else {
+        // Invisible / Notification: whisper to GM only
         const gmIds = game.users.filter(u => u.isGM).map(u => u.id);
         messageData.whisper = gmIds;
         ChatMessage.create(messageData);
@@ -211,6 +213,20 @@ export function sendJasraMessage(authorName, text) {
             username: authorName
         }),
     }).catch((err) => log('Webhook error:', err));
+}
+
+// ── Strip whisper prefix from Discord messages ──────────────────────────
+
+export function setupWhisperPrefixStrip() {
+    Hooks.on('renderChatMessage', (message, html) => {
+        // Only for our Discord messages that are whispers
+        if (!message.flags?.[MODULE_ID]?.source) return;
+        if (!message.whisper?.length) return;
+
+        // Remove the "whispers to" header line
+        const whisperHeader = html.find('.whisper-to');
+        if (whisperHeader.length) whisperHeader.remove();
+    });
 }
 
 // ── Helpers ─────────────────────────────────────────────────────────────

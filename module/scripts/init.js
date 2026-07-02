@@ -1,6 +1,6 @@
 import { registerSettings } from './settings.js';
 import { BridgeConfig } from './config-app.js';
-import { GatewayClient, onDiscordMessage, sendJasraMessage, getBotInfo } from './gateway.js';
+import { GatewayClient, onDiscordMessage, sendJasraMessage, getBotInfo, setupWhisperPrefixStrip } from './gateway.js';
 
 const MODULE_ID = 'foundry-discord-bridge';
 const log = (...args) => console.log(`[${MODULE_ID}]`, ...args);
@@ -35,6 +35,7 @@ Hooks.once('ready', () => {
         connectGateway();
         setupJasraIntercept();
         watchForChatArea();
+        setupWhisperPrefixStrip();
     }
 
     Hooks.on('closeApplication', () => {
