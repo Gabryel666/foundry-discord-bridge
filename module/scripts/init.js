@@ -141,10 +141,9 @@ function setupJasraIntercept() {
         if (mode === 'invisible') {
             ChatMessage.create({
                 content: `<div class="fdb-message"><span class="fdb-author">@Jasra:</span> <span class="fdb-content">${escapeHtml(text)}</span></div>`,
-                speaker: { alias: authorName },
-                type: CONST.CHAT_MESSAGE_TYPES.WHISPER,
-                whisper: [game.user.id],
-                flags: { [MODULE_ID]: { source: 'jasra-private' } },
+                speaker: { alias: 'Jasra' },
+                type: CONST.CHAT_MESSAGE_TYPES.OOC,
+                flags: { [MODULE_ID]: { source: 'jasra-private', visibleTo: [game.user.id] } },
             });
             return false;
         }
@@ -152,10 +151,9 @@ function setupJasraIntercept() {
         if (mode === 'notification') {
             ChatMessage.create({
                 content: `<div class="fdb-message"><span class="fdb-author">@Jasra:</span> <span class="fdb-content">${escapeHtml(text)}</span></div>`,
-                speaker: { alias: authorName },
-                type: CONST.CHAT_MESSAGE_TYPES.WHISPER,
-                whisper: [game.user.id],
-                flags: { [MODULE_ID]: { source: 'jasra-private' } },
+                speaker: { alias: 'Jasra' },
+                type: CONST.CHAT_MESSAGE_TYPES.OOC,
+                flags: { [MODULE_ID]: { source: 'jasra-private', visibleTo: [game.user.id] } },
             });
             ChatMessage.create({
                 content: `<em class="fdb-notification">${escapeHtml(authorName)} échange avec Jasra...</em>`,
