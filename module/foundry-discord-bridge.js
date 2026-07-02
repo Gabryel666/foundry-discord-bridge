@@ -146,7 +146,55 @@ let gateway = null;
 
 // ── Settings ────────────────────────────────────────────────────────────
 
-Hooks.once('init', () => log('Initialized'));
+Hooks.once('init', () => {
+  log('Initializing');
+
+  game.settings.register(MODULE_ID, 'enabled', {
+    name: 'Activer le bridge',
+    scope: 'world',
+    config: true,
+    type: Boolean,
+    default: true,
+  });
+
+  game.settings.register(MODULE_ID, 'discordToken', {
+    name: 'Token du bot Discord',
+    hint: 'Token du bot Discord pour écouter les messages (visible uniquement par le MJ)',
+    scope: 'world',
+    config: true,
+    type: String,
+    default: '',
+  });
+
+  game.settings.register(MODULE_ID, 'discordGuildId', {
+    name: 'ID du serveur Discord',
+    hint: 'Identifiant du serveur Discord (clic droit → Copier l\'identifiant)',
+    scope: 'world',
+    config: true,
+    type: String,
+    default: '',
+  });
+
+  game.settings.register(MODULE_ID, 'discordChannelId', {
+    name: 'ID du salon Discord',
+    hint: 'Identifiant du salon à écouter (clic droit → Copier l\'identifiant)',
+    scope: 'world',
+    config: true,
+    type: String,
+    default: '',
+  });
+
+  game.settings.register(MODULE_ID, 'discordWebhookUrl', {
+    name: 'URL du webhook Discord',
+    hint: 'Webhook du salon pour envoyer les messages Foundry → Discord',
+    scope: 'world',
+    config: true,
+    type: String,
+    default: '',
+  });
+
+  log('Settings registered');
+});
 
 // ── Start ───────────────────────────────────────────────────────────────
 
