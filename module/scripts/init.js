@@ -59,36 +59,62 @@ function registerChatControl() {
 }
 
 function tryInjectButton() {
+    // Already injected and in DOM?
+    if (document.getElementById('fdb-jasra-btn')) return true;
+
+    // Strategy 1: Find the control button row at the top of the chat
+    // In Foundry v13, these are <a> or <button> elements in a flex row
+    // above the chat input. The "self" button is typically the last one
+    // in the left group (person icon).
+
+    // Find all anchor/button elements that look like roll-mode controls
+    // They sit above the chat input in a horizontal row
     const chatMessage = document.getElementById('chat-message');
     if (!chatMessage) return false;
 
-    // Already injected next to this input?
-    if (chatMessage.parentElement?.querySelector('#fdb-jasra-btn')) {
+    // Walk up from the input to find the container that holds
+    // both the control buttons AND the input
+    const chatPanel = chatMessage.closest('.chat-log')
+        || chatMessage.closest('#chat')
+        || chatMessage.closest('[class*="chat"]')
+        || chatMessage.parentElement?.parentElement;
+    if (!chatPanel) return false;
+
+    // Find the button row — it's a flex container with small square buttons
+    // before the input area. Look for a container of <a> elements with
+    // icons (fa-dice, fa-eye, fa-user, etc.)
+    const allBtnContainers = chatPanel.querySelectorAll('div');
+    let controlRow = null;
+    for (const div of allBtnContainers) {
+        const links = div.querySelectorAll(':scope > a, :scope > button');
+        if (links.length >= 3 && links.length <= 8) {
+            // Check if they contain <i> icons (typical of control buttons)
+            const hasIcons = Array.from(links).some(l => l.querySelector('i'));
+            if (hasIcons) {
+                controlRow = div;
+                break;
+            }
+        }
+    }
+
+    if (controlRow) {
+        // Find the last button before the "utility" buttons (save/trash)
+        // The roll-mode buttons are typically the first group
+        // We insert after the last roll-mode button
+        const btn = createJasraButton();
+        controlRow.appendChild(btn);
+        log('Button injected into control row:', controlRow.className);
+        updateButtonAvatar();
         return true;
     }
 
-    // Remove orphaned button (if input was re-parented)
-    document.getElementById('fdb-jasra-btn')?.remove();
-
-    // Log the DOM structure so we can debug placement
-    log('=== Chat input found ===');
-    let el = chatMessage;
-    for (let i = 0; i < 6 && el; i++) {
-        const tag = el.tagName?.toLowerCase() || '?';
-        const cls = el.className ? '.' + String(el.className).trim().split(/\s+/).join('.') : '';
-        const id = el.id ? '#' + el.id : '';
-        log(`  depth ${i}: <${tag}${id}${cls}>`);
-        el = el.parentElement;
-    }
-
+    // Fallback: insert before the chat input
     const parent = chatMessage.parentElement;
     if (!parent) return false;
 
-    log(`  inserting into: <${parent.tagName}#${parent.id || ''}.${parent.className || ''}>`);
-
     const btn = createJasraButton();
     parent.insertBefore(btn, chatMessage);
-    log('Button injected!');
+    log('Button injected before chat input (fallback)');
     updateButtonAvatar();
     return true;
 }
