@@ -6,7 +6,7 @@ const MODULE_ID = 'foundry-discord-bridge';
 const log = (...args) => console.log(`[${MODULE_ID}]`, ...args);
 
 let gateway = null;
-let jasraButtonInjected = false;
+let buttonInjected = false;
 
 function escapeHtml(text) {
     const el = document.createElement('span');
@@ -34,47 +34,98 @@ Hooks.once('ready', () => {
     if (game.user.isGM) {
         connectGateway();
         setupJasraIntercept();
-        // Inject Jasra button when chat renders
-        Hooks.on('renderChatLog', injectJasraButton);
+        injectJasraButton();
     }
 
-    // Cleanup
     Hooks.on('closeApplication', () => {
         if (gateway) { gateway.close(); gateway = null; }
     });
 });
 
-// ── Jasra Button Injection ──────────────────────────────────────────────
+// ── Jasra Button — Universal Injection ──────────────────────────────────
 
-function injectJasraButton(chatLog, html) {
-    if (jasraButtonInjected) return;
+function injectJasraButton() {
+    if (buttonInjected) return;
 
-    // Find the chat input area
-    const chatForm = html.find('#chat-form');
-    if (!chatForm.length) return;
+    // Try multiple strategies to find where to put the button
+    const attempt = () => {
+        if (buttonInjected) return true;
 
-    // Create the button
-    const btn = $(`
-        <button type="button" id="fdb-jasra-btn" class="fdb-jasra-btn"
-                title="${game.i18n.localize('FDB.Button.Jasra')}">
-            <i class="fas fa-ghost"></i>
-        </button>
-    `);
+        // Strategy 1: #chat-form
+        let form = document.getElementById('chat-form');
+        if (form) {
+            const submitBtn = form.querySelector('button[type="submit"], button:not([id])');
+            if (submitBtn) {
+                const btn = createButton();
+                submitBtn.parentNode.insertBefore(btn, submitBtn);
+                buttonInjected = true;
+                log('Button injected (chat-form)');
+                return true;
+            }
+        }
 
-    btn.on('click', (event) => {
-        event.preventDefault();
+        // Strategy 2: .chat-input container (some systems)
+        const chatInput = document.getElementById('chat-message');
+        if (chatInput) {
+            const container = chatInput.closest('form') || chatInput.parentElement;
+            if (container) {
+                const btn = createButton();
+                container.insertBefore(btn, container.firstChild);
+                buttonInjected = true;
+                log('Button injected (chat-message parent)');
+                return true;
+            }
+        }
+
+        // Strategy 3: append to #chat-log sidebar area
+        const chatLog = document.getElementById('chat-log');
+        if (chatLog) {
+            const btn = createButton();
+            btn.style.cssText = 'position:fixed;bottom:8px;left:8px;z-index:1000;width:36px;height:36px;border-radius:50%;';
+            document.body.appendChild(btn);
+            buttonInjected = true;
+            log('Button injected (floating)');
+            return true;
+        }
+
+        return false;
+    };
+
+    // Try immediately
+    if (attempt()) return;
+
+    // Retry with delays (system might render chat later)
+    const retry = setInterval(() => {
+        if (attempt() || buttonInjected) clearInterval(retry);
+    }, 500);
+
+    // Stop after 10 seconds
+    setTimeout(() => clearInterval(retry), 10000);
+}
+
+function createButton() {
+    const btn = document.createElement('button');
+    btn.type = 'button';
+    btn.id = 'fdb-jasra-btn';
+    btn.className = 'fdb-jasra-btn';
+    btn.title = game.i18n.localize('FDB.Button.Jasra');
+    btn.innerHTML = '<i class="fas fa-ghost"></i>';
+    btn.addEventListener('click', (e) => {
+        e.preventDefault();
+        e.stopPropagation();
         insertJasraPrefix();
     });
-
-    // Insert before the send button
-    chatForm.find('button[type="submit"]').before(btn);
-    jasraButtonInjected = true;
-    log('Jasra button injected');
+    return btn;
 }
 
 function insertJasraPrefix() {
     const chatInput = document.getElementById('chat-message');
-    if (!chatInput) return;
+    if (!chatInput) {
+        // Fallback: prompt
+        const msg = prompt('Message pour Jasra :');
+        if (msg) sendJasraMessage(game.user.name || 'MJ', msg);
+        return;
+    }
 
     if (chatInput.value.startsWith('@Jasra ')) {
         chatInput.focus();
@@ -103,7 +154,6 @@ function setupJasraIntercept() {
         sendJasraMessage(authorName, text);
 
         if (mode === 'invisible') {
-            // Whisper content to MJ only — players see nothing
             ChatMessage.create({
                 content: `<div class="fdb-message"><span class="fdb-author">@Jasra:</span> <span class="fdb-content">${escapeHtml(text)}</span></div>`,
                 speaker: { alias: authorName },
@@ -115,7 +165,6 @@ function setupJasraIntercept() {
         }
 
         if (mode === 'notification') {
-            // Whisper content to MJ
             ChatMessage.create({
                 content: `<div class="fdb-message"><span class="fdb-author">@Jasra:</span> <span class="fdb-content">${escapeHtml(text)}</span></div>`,
                 speaker: { alias: authorName },
@@ -123,7 +172,6 @@ function setupJasraIntercept() {
                 whisper: [game.user.id],
                 flags: { [MODULE_ID]: { source: 'jasra-private' } },
             });
-            // Public notification
             ChatMessage.create({
                 content: `<em class="fdb-notification">[MJ] échange avec Jasra...</em>`,
                 speaker: { alias: authorName },
@@ -133,7 +181,7 @@ function setupJasraIntercept() {
             return false;
         }
 
-        // Public: let the original message through
+        // Public
         message.updateSource({
             flags: { [MODULE_ID]: { source: 'jasra-public' } }
         });

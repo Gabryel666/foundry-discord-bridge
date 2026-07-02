@@ -21,6 +21,10 @@ const Intent = {
     MESSAGE_CONTENT: 1 << 15,
 };
 
+// Bot info (populated on READY)
+let botInfo = { id: null, username: null, avatar: null };
+export function getBotInfo() { return botInfo; }
+
 // ── Gateway Client ──────────────────────────────────────────────────────
 
 export class GatewayClient {
@@ -108,7 +112,17 @@ export class GatewayClient {
                     this.#sessionId = d.session_id;
                     this.#resumeUrl = d.resume_gateway_url;
                     this.#connected = true;
-                    log(`Ready as ${d.user.username}`);
+
+                    // Store bot info for avatar
+                    botInfo = {
+                        id: d.user.id,
+                        username: d.user.username,
+                        avatar: d.user.avatar
+                    };
+                    log(`Ready as ${d.user.username} (${d.user.id})`);
+
+                    // Update button avatar if already injected
+                    updateButtonAvatar();
                 } else if (t === 'MESSAGE_CREATE' && d.channel_id === this.#channelId && !d.author?.bot) {
                     this.#onMessage?.({
                         id: d.id,
@@ -144,6 +158,17 @@ export class GatewayClient {
     }
 }
 
+// ── Button Avatar Update ────────────────────────────────────────────────
+
+function updateButtonAvatar() {
+    const btn = document.getElementById('fdb-jasra-btn');
+    if (!btn || !botInfo.id || !botInfo.avatar) return;
+
+    const avatarUrl = `https://cdn.discordapp.com/avatars/${botInfo.id}/${botInfo.avatar}.png?size=64`;
+    btn.innerHTML = `<img src="${avatarUrl}" style="width:28px;height:28px;border-radius:50%;" alt="Jasra" />`;
+    log('Button avatar updated');
+}
+
 // ── Discord → Foundry ───────────────────────────────────────────────────
 
 export function onDiscordMessage(msg) {
@@ -162,10 +187,8 @@ export function onDiscordMessage(msg) {
     };
 
     if (mode === 'public') {
-        // Public: everyone sees Discord messages
         ChatMessage.create(messageData);
     } else {
-        // Invisible / Notification: whisper to GM only
         const gmIds = game.users.filter(u => u.isGM).map(u => u.id);
         messageData.whisper = gmIds;
         ChatMessage.create(messageData);

@@ -1,8 +1,8 @@
 {
   "FDB.Settings.Enabled.Name": "Enable Bridge",
-  "FDB.Settings.Enabled.Hint": "Connect to Discord and relay chat messages",
+  "FDB.Settings.Enabled.Hint": "Activate the MJ/Jasra dialogue via Discord. The #foundry channel is permanently monitored.",
   "FDB.Settings.ChatMode.Name": "Chat visibility mode",
-  "FDB.Settings.ChatMode.Hint": "How Jasra conversations appear in Foundry chat",
+  "FDB.Settings.ChatMode.Hint": "How Jasra conversations appear in Foundry (Discord messages always whispered to MJ except in Public mode)",
   "FDB.Settings.ChatMode.Invisible": "Invisible — nothing shown in Foundry",
   "FDB.Settings.ChatMode.Notification": "Notification — '[MJ] échange avec Jasra...' for everyone",
   "FDB.Settings.ChatMode.Public": "Public — all messages visible to everyone",

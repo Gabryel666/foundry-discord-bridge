@@ -3,7 +3,7 @@ import { BridgeConfig } from './config-app.js';
 const MODULE_ID = 'foundry-discord-bridge';
 
 export function registerSettings() {
-    // Toggle
+    // 1. Master toggle — FIRST
     game.settings.register(MODULE_ID, 'enabled', {
         name: game.i18n.localize('FDB.Settings.Enabled.Name'),
         hint: game.i18n.localize('FDB.Settings.Enabled.Hint'),
@@ -13,7 +13,7 @@ export function registerSettings() {
         default: true
     });
 
-    // Chat mode
+    // 2. Chat mode
     game.settings.register(MODULE_ID, 'chatMode', {
         name: game.i18n.localize('FDB.Settings.ChatMode.Name'),
         hint: game.i18n.localize('FDB.Settings.ChatMode.Hint'),
@@ -22,13 +22,13 @@ export function registerSettings() {
         type: String,
         default: 'invisible',
         choices: {
-            'invisible': '👻 Invisible',
-            'notification': '🔔 Notification',
-            'public': '📢 Public'
+            'invisible': game.i18n.localize('FDB.Settings.ChatMode.Invisible'),
+            'notification': game.i18n.localize('FDB.Settings.ChatMode.Notification'),
+            'public': game.i18n.localize('FDB.Settings.ChatMode.Public')
         }
     });
 
-    // Custom config menu
+    // 3. Config menu button
     game.settings.registerMenu(MODULE_ID, 'config', {
         name: game.i18n.localize('FDB.ConfigMenu.Name'),
         label: game.i18n.localize('FDB.ConfigMenu.Label'),
@@ -38,7 +38,7 @@ export function registerSettings() {
         restricted: true
     });
 
-    // Hidden settings
+    // Hidden settings (managed by config form)
     game.settings.register(MODULE_ID, 'discordToken', {
         scope: 'world', config: false, type: String, default: ''
     });
