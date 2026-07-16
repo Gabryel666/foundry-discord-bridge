@@ -67,7 +67,16 @@ function tryInjectButton() {
 
     const btn = createJasraButton();
 
-    // ── Strategy 1: Foundry v13 — #roll-privacy (split-button container) ──
+    // ── Strategy 1: Foundry v14 — #message-modes (split-button, exact ID) ──
+    const messageModes = document.getElementById('message-modes');
+    if (messageModes) {
+        messageModes.appendChild(btn);
+        log('Button injected into #message-modes (v14)');
+        updateButtonAvatar();
+        return true;
+    }
+
+    // ── Strategy 2: Foundry v13 — #roll-privacy (legacy split-button) ──
     const rollPrivacy = document.getElementById('roll-privacy');
     if (rollPrivacy) {
         rollPrivacy.appendChild(btn);
@@ -76,38 +85,28 @@ function tryInjectButton() {
         return true;
     }
 
-    // ── Strategy 2: Foundry v14 — Message mode toolbar buttons ──
-    // In v14, mode buttons use data-action="messageMode" in the chat controls bar
+    // ── Strategy 3: data-action selector (works both v13 and v14) ──
     const modeButtons = document.querySelectorAll('[data-action="messageMode"]');
     if (modeButtons.length > 0) {
         const parent = modeButtons[modeButtons.length - 1].parentElement;
         if (parent && parent !== document.body) {
             parent.appendChild(btn);
-            log('Button injected into message mode toolbar (v14)');
+            log('Button injected via data-action messageMode');
             updateButtonAvatar();
             return true;
         }
     }
 
-    // ── Strategy 3: Foundry v14 — #chat-controls container ──
-    const chatControls = document.querySelector('#chat-controls, .chat-controls');
+    // ── Strategy 4: #chat-controls container ──
+    const chatControls = document.getElementById('chat-controls');
     if (chatControls) {
         chatControls.appendChild(btn);
-        log('Button injected into chat controls');
+        log('Button injected into #chat-controls');
         updateButtonAvatar();
         return true;
     }
 
-    // ── Strategy 4: Foundry — chat footer area ──
-    const chatFooter = document.querySelector('footer.chat-footer, section#chat > footer');
-    if (chatFooter) {
-        chatFooter.appendChild(btn);
-        log('Button injected into chat footer');
-        updateButtonAvatar();
-        return true;
-    }
-
-    // ── Strategy 5: Fallback — insert before chat input ──
+    // ── Strategy 5: Insert before chat input ──
     const chatMessage = document.getElementById('chat-message');
     if (chatMessage) {
         const parent = chatMessage.parentElement;
@@ -119,7 +118,7 @@ function tryInjectButton() {
         }
     }
 
-    // ── Strategy 6: Last resort — inject into #chat itself ──
+    // ── Strategy 6: Last resort — inject into #chat ──
     const chat = document.getElementById('chat');
     if (chat) {
         chat.appendChild(btn);
@@ -135,7 +134,7 @@ function createJasraButton() {
     const btn = document.createElement('button');
     btn.type = 'button';
     btn.id = 'fdb-jasra-btn';
-    btn.className = 'fdb-jasra-btn';
+    btn.className = 'ui-control icon fdb-jasra-btn';
     btn.title = game.i18n.localize('FDB.Button.Jasra');
     btn.innerHTML = '<i class="fas fa-ghost"></i>';
 

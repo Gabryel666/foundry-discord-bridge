@@ -30,20 +30,11 @@
   font-style: italic;
 }
 
-/* ── Jasra Button — Inherit Foundry chat control style ───────────────── */
+/* ── Jasra Button — Inherit native split-button style via ui-control ─── */
 
 #fdb-jasra-btn {
-  /* Let the parent container handle positioning */
+  /* Only override color for branding — size, border, bg from ui-control icon */
   color: #5865f2;
-  background: none;
-  border: none;
-  cursor: pointer;
-  display: flex;
-  align-items: center;
-  justify-content: center;
-  width: 28px;
-  height: 28px;
-  padding: 2px;
 }
 
 #fdb-jasra-btn:hover {
@@ -56,6 +47,11 @@
   border-radius: 50%;
   display: block;
   object-fit: cover;
+}
+
+/* ── Foundry v14: Hide the ProseMirror Format toolbar ────────────────── */
+#chat menu.editor-menu {
+  display: none !important;
 }
 
 /* ── Config Form ─────────────────────────────────────────────────────── */
