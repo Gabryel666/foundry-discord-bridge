@@ -220,6 +220,14 @@ export function onDiscordMessage(msg) {
         // Construire le contenu: texte + images du content + attachments + embeds
         let bodyHtml = embedImages(msg.content || '');
 
+        // Collecter les URLs déjà embarquées dans le texte pour dédoublonner les embeds
+        const alreadyEmbedded = new Set();
+        const urlRegex = /https?:\/\/[^\s<]*?\.(?:png|jpg|jpeg|gif|webp|bmp|svg)(?:\?[^\s<]*)?/gi;
+        let m;
+        while ((m = urlRegex.exec(msg.content || '')) !== null) {
+            alreadyEmbedded.add(m[0]);
+        }
+
         // Attachments (fichiers uploadés — images/GIF)
         if (msg.attachments?.length) {
             const imgExts = ['png', 'jpg', 'jpeg', 'gif', 'webp', 'bmp', 'svg'];
@@ -227,16 +235,19 @@ export function onDiscordMessage(msg) {
                 const ext = (att.filename || '').split('.').pop()?.toLowerCase();
                 if (att.content_type?.startsWith('image/') || imgExts.includes(ext)) {
                     bodyHtml += `\n<img src="${att.url}" class="fdb-embed-image" loading="lazy" />`;
+                    alreadyEmbedded.add(att.url);
                 }
             });
         }
 
         // Embeds (GIF picker, previews de liens — Tenor, GIPHY, etc.)
+        // Skip si l'URL est déjà dans le texte ou les attachments
         if (msg.embeds?.length) {
             msg.embeds.forEach(embed => {
                 const imgUrl = embed.image?.url || embed.thumbnail?.url || null;
-                if (imgUrl) {
+                if (imgUrl && !alreadyEmbedded.has(imgUrl)) {
                     bodyHtml += `\n<img src="${imgUrl}" class="fdb-embed-image" loading="lazy" />`;
+                    alreadyEmbedded.add(imgUrl);
                 }
             });
         }
