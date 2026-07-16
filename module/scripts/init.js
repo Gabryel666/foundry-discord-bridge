@@ -226,6 +226,15 @@ function toggleJasraMode() {
         }
         jasraSettingChange = false;
 
+        // Synchro visuelle: forcer le bouton cible actif
+        requestAnimationFrame(() => {
+            document.querySelectorAll('#message-modes [data-action="messageMode"]').forEach(b => {
+                const isTarget = b.dataset.mode === targetMode;
+                b.classList.toggle('active', isTarget);
+                b.setAttribute('aria-pressed', isTarget ? 'true' : 'false');
+            });
+        });
+
         const chatInput = document.getElementById('chat-message');
         if (chatInput) chatInput.focus();
 
@@ -239,6 +248,16 @@ function toggleJasraMode() {
             game.settings.set('core', 'rollMode', previousMessageMode);
         }
         jasraSettingChange = false;
+
+        // Synchro visuelle: forcer les boutons à refléter le mode restauré
+        requestAnimationFrame(() => {
+            document.querySelectorAll('#message-modes [data-action="messageMode"]').forEach(b => {
+                const isTarget = b.dataset.mode === previousMessageMode;
+                b.classList.toggle('active', isTarget);
+                b.setAttribute('aria-pressed', isTarget ? 'true' : 'false');
+            });
+        });
+
         log('Jasra mode deactivated → restored:', previousMessageMode);
     }
 }
@@ -314,6 +333,9 @@ function setupModeLock() {
     const jasraTargetMode = { invisible: 'gm', notification: 'gm', public: 'public' };
 
     // Intercept clicks on mode buttons (split-button items in v14)
+    // Foundry utilise un event listener sur le conteneur parent (split-button),
+    // donc stopImmediatePropagation sur le bouton n'empêche pas le parent.
+    // Solution: laisser Foundry faire sa mise à jour, puis REVERT en raf.
     function blockManualModeChange(e) {
         if (!jasraActive) return;
 
@@ -325,36 +347,49 @@ function setupModeLock() {
             e.stopPropagation();
             e.stopImmediatePropagation();
 
-            // Force back to Jasra's mode
+            // Revert setting + visuel APRÈS que Foundry ait fini son rendering
             jasraSettingChange = true;
             game.settings.set('core', 'messageMode', targetMode);
             jasraSettingChange = false;
 
-            // Visually reset the active button
-            const buttons = document.querySelectorAll('#message-modes [data-action="messageMode"]');
-            buttons.forEach(b => {
-                b.classList.toggle('active', b.dataset.mode === targetMode);
-                b.setAttribute('aria-pressed', b.dataset.mode === targetMode ? 'true' : 'false');
-            });
+            // requestAnimationFrame: attend que Foundry ait peint sa modif,
+            // puis on remet les visuels à leur état Jasra
+            requestAnimationFrame(() => syncModeVisuals(targetMode));
 
             ui.notifications.warn('Jasra est actif — le mode de chat est verrouillé');
         }
     }
 
-    // Observe the DOM for mode buttons and attach click interceptors
+    // Sync visuelle: force le bouton cible à être actif, les autres inactifs
+    function syncModeVisuals(targetMode) {
+        document.querySelectorAll('#message-modes [data-action="messageMode"]').forEach(b => {
+            const isTarget = b.dataset.mode === targetMode;
+            b.classList.toggle('active', isTarget);
+            b.setAttribute('aria-pressed', isTarget ? 'true' : 'false');
+        });
+        // Sync aussi le state interne de Foundry (setting déjà mis plus haut)
+    }
+
+    // Attache les intercepteurs de clic sur chaque bouton
     function attachModeLocks() {
         const modeContainer = document.getElementById('message-modes');
         if (!modeContainer) { setTimeout(attachModeLocks, 100); return; }
 
         modeContainer.querySelectorAll('[data-action="messageMode"]').forEach(btn => {
             btn.removeEventListener('click', blockManualModeChange, true);
-            btn.addEventListener('click', blockManualModeChange, true); // capture phase
+            btn.addEventListener('click', blockManualModeChange, true);
         });
     }
 
-    // Initial + reactive attachment
-    Hooks.on('renderChatLog', () => setTimeout(attachModeLocks, 50));
-    Hooks.on('renderChatControls', () => setTimeout(attachModeLocks, 50));
+    // Sync visuelle après chaque re-render du chat (quand Jasra est actif)
+    function syncOnRender() {
+        if (!jasraActive) return;
+        const targetMode = jasraTargetMode[game.settings.get(MODULE_ID, 'chatMode')] || 'public';
+        requestAnimationFrame(() => syncModeVisuals(targetMode));
+    }
+
+    Hooks.on('renderChatLog', () => { setTimeout(attachModeLocks, 50); syncOnRender(); });
+    Hooks.on('renderChatControls', () => { setTimeout(attachModeLocks, 50); syncOnRender(); });
     attachModeLocks();
 }
 
