@@ -6,8 +6,21 @@ const MODULE_ID = 'foundry-discord-bridge';
 const log = (...args) => console.log(`[${MODULE_ID}]`, ...args);
 
 // ── Chat message type constants — handle v13/v14 differences ────────────
+// v14: type → style (numeric from CHAT_MESSAGE_STYLES), whisper array controls visibility
+// v13: type (string: 'whisper', 'ic', 'other'), no style field
 const _isV14 = typeof CONST.CHAT_MESSAGE_STYLES !== 'undefined';
-const CHAT_TYPE_WHISPER = _isV14 ? 'ooc' : 'whisper';
+const MSG = {
+    v14: _isV14,
+    whisper: (targetIds) => _isV14
+        ? { style: CONST.CHAT_MESSAGE_STYLES.OOC, whisper: targetIds }
+        : { type: CONST.CHAT_MESSAGE_TYPES.WHISPER, whisper: targetIds },
+    public: () => _isV14
+        ? { style: CONST.CHAT_MESSAGE_STYLES.IC }
+        : { type: CONST.CHAT_MESSAGE_TYPES.IC },
+    other: () => _isV14
+        ? { style: CONST.CHAT_MESSAGE_STYLES.OTHER }
+        : { type: CONST.CHAT_MESSAGE_TYPES.OTHER },
+};
 
 const GATEWAY_URL = 'wss://gateway.discord.gg';
 const GATEWAY_VERSION = 10;
@@ -193,22 +206,19 @@ export function onDiscordMessage(msg) {
         log('Creating ChatMessage, mode:', mode, 'author:', msg.author);
 
         if (mode === 'public') {
-            ChatMessage.create({
+            ChatMessage.create(Object.assign({
                 content,
                 speaker: { alias: msg.author },
-                type: 'ic',
                 flags: { [MODULE_ID]: { source: 'discord', discordId: msg.id } },
-            }).then(() => log('ChatMessage created (public)'))
+            }, MSG.public())).then(() => log('ChatMessage created (public)'))
               .catch(err => log('ChatMessage.create error:', err));
         } else {
             // Invisible / Notification: whisper to GM only
-            ChatMessage.create({
+            ChatMessage.create(Object.assign({
                 content,
                 speaker: { alias: msg.author },
-                type: CHAT_TYPE_WHISPER,
-                whisper: gmIds,
                 flags: { [MODULE_ID]: { source: 'discord', discordId: msg.id } },
-            }).then(() => log('ChatMessage created (whisper)'))
+            }, MSG.whisper(gmIds))).then(() => log('ChatMessage created (whisper)'))
               .catch(err => log('ChatMessage.create error:', err));
         }
     } catch (err) {

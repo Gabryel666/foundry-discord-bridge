@@ -16,10 +16,24 @@ let jasraActive = false;
 let jasraSettingChange = false;
 
 // ── Chat message type constants — handle v13/v14 differences ────────────
-// v14 removed CONST.CHAT_MESSAGE_TYPES and 'whisper' is no longer a valid type
-// Use 'ooc' for whispers in v14, 'whisper' in v13
+// v14: type → style (numeric from CHAT_MESSAGE_STYLES), whisper array controls visibility
+// v13: type (string: 'whisper', 'ic', 'other'), no style field
 const _isV14 = typeof CONST.CHAT_MESSAGE_STYLES !== 'undefined';
-const CHAT_TYPE_WHISPER = _isV14 ? 'ooc' : 'whisper';
+const MSG = {
+    v14: _isV14,
+    // For whispers: v14 uses style:OOC + whisper[], v13 uses type:'whisper' + whisper[]
+    whisper: (targetIds) => _isV14
+        ? { style: CONST.CHAT_MESSAGE_STYLES.OOC, whisper: targetIds }
+        : { type: CONST.CHAT_MESSAGE_TYPES.WHISPER, whisper: targetIds },
+    // For public messages: v14 uses style:IC, v13 uses type:'ic'
+    public: () => _isV14
+        ? { style: CONST.CHAT_MESSAGE_STYLES.IC }
+        : { type: CONST.CHAT_MESSAGE_TYPES.IC },
+    // For notification: v14 uses style:OTHER, v13 uses type:'other'
+    other: () => _isV14
+        ? { style: CONST.CHAT_MESSAGE_STYLES.OTHER }
+        : { type: CONST.CHAT_MESSAGE_TYPES.OTHER },
+};
 
 function escapeHtml(text) {
     const el = document.createElement('span');
@@ -265,30 +279,25 @@ function setupJasraIntercept() {
         sendJasraMessage(authorName, text);
 
         if (mode === 'invisible') {
-            ChatMessage.create({
+            ChatMessage.create(Object.assign({
                 content: `<div class="fdb-message"><span class="fdb-content">${escapeHtml(text)}</span></div>`,
                 speaker: { alias: authorName },
-                type: CHAT_TYPE_WHISPER,
-                whisper: [game.user.id],
                 flags: { [MODULE_ID]: { source: 'jasra-private' } },
-            });
+            }, MSG.whisper([game.user.id])));
             return false;
         }
 
         if (mode === 'notification') {
-            ChatMessage.create({
+            ChatMessage.create(Object.assign({
                 content: `<div class="fdb-message"><span class="fdb-content">${escapeHtml(text)}</span></div>`,
                 speaker: { alias: authorName },
-                type: CHAT_TYPE_WHISPER,
-                whisper: [game.user.id],
                 flags: { [MODULE_ID]: { source: 'jasra-private' } },
-            });
-            ChatMessage.create({
+            }, MSG.whisper([game.user.id])));
+            ChatMessage.create(Object.assign({
                 content: `<em class="fdb-notification">${escapeHtml(authorName)} échange avec Jasra...</em>`,
                 speaker: { alias: authorName },
-                type: 'other',
                 flags: { [MODULE_ID]: { source: 'jasra-notify' } },
-            });
+            }, MSG.other()));
             return false;
         }
 
