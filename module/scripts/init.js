@@ -183,46 +183,49 @@ function insertJasraPrefix() {
     }
 
     // Foundry v14: ProseMirror contenteditable div
-    // Use the ChatInputPlugin API if available, otherwise fallback to textContent
     if (chatInput.isContentEditable) {
-        // Focus the editor first
         chatInput.focus();
 
-        // Try ProseMirror API
-        const view = chatInput._pmView || chatInput.closest('[data-pm-view]')?._pmView;
-        if (view && view.dispatch) {
-            const { tr, Selection } = view.state;
-            const doc = view.state.doc;
+        // Get the ProseMirror EditorView from Foundry's editor registry
+        const view = ui.chat?.editor?.view
+            || chatInput._pmView
+            || (chatInput.pmViewDesc?.view);
+
+        if (view && view.state) {
+            const { state, dispatch } = view;
             const text = '@Jasra ';
-            if (!doc.textBetween(0, doc.content.size, '\n', '\n').startsWith(text)) {
-                const tr2 = view.state.tr.insertText(text, 0);
-                view.dispatch(tr2);
+            const currentText = state.doc.textBetween(0, state.doc.content.size, '\n', '\n');
+            if (!currentText.startsWith(text)) {
+                dispatch(state.tr.insertText(text, 0));
             }
             return;
         }
 
-        // Fallback: manual DOM manipulation
+        // Last resort: contenteditable fallback
         if (!chatInput.textContent.startsWith('@Jasra ')) {
             chatInput.textContent = '@Jasra ' + chatInput.textContent;
         }
-        // Place cursor at end
-        const range = document.createRange();
-        const sel = window.getSelection();
-        range.selectNodeContents(chatInput);
-        range.collapse(false);
-        sel.removeAllRanges();
-        sel.addRange(range);
     }
 }
 
 // ── Intercept @Jasra Messages ───────────────────────────────────────────
 
+/** Strip HTML tags and get plain text content */
+function getPlainText(html) {
+    const tmp = document.createElement('div');
+    tmp.innerHTML = html;
+    return tmp.textContent || '';
+}
+
 function setupJasraIntercept() {
     Hooks.on('preCreateChatMessage', (message, data, options, userId) => {
-        const content = data.content || '';
-        if (!content.startsWith('@Jasra ')) return true;
+        const rawContent = data.content || '';
+        // In v14, ProseMirror wraps content in HTML (<p>@Jasra message</p>)
+        // Strip HTML to get plain text for prefix detection
+        const plainContent = getPlainText(rawContent);
+        if (!plainContent.startsWith('@Jasra ')) return true;
 
-        const text = content.replace(/^@Jasra\s*/, '').trim();
+        const text = plainContent.replace(/^@Jasra\s*/, '').trim();
         if (!text) return false;
 
         const mode = game.settings.get(MODULE_ID, 'chatMode');
