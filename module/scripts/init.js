@@ -163,6 +163,8 @@ function updateButtonAvatar() {
 
 // ── Toggle Jasra Mode ──────────────────────────────────────────────────
 
+let previousMessageMode = 'public';
+
 function toggleJasraMode() {
     jasraActive = !jasraActive;
 
@@ -173,12 +175,38 @@ function toggleJasraMode() {
     }
 
     if (jasraActive) {
-        log('Jasra mode activated');
-        // Focus the chat input so user can start typing
+        // Sync Foundry message mode with module settings
+        const chatMode = game.settings.get(MODULE_ID, 'chatMode');
+        const modeMap = { invisible: 'gm', notification: 'gm', public: 'public' };
+        const targetMode = modeMap[chatMode] || 'public';
+
+        // Save current mode to restore later
+        try {
+            previousMessageMode = game.settings.get('core', 'messageMode') || 'public';
+        } catch(e) {
+            try { previousMessageMode = game.settings.get('core', 'rollMode') || 'public'; }
+            catch(e2) { previousMessageMode = 'public'; }
+        }
+
+        // Apply target mode
+        try {
+            game.settings.set('core', 'messageMode', targetMode);
+        } catch(e) {
+            game.settings.set('core', 'rollMode', targetMode);
+        }
+
         const chatInput = document.getElementById('chat-message');
         if (chatInput) chatInput.focus();
+
+        log('Jasra mode activated → Foundry mode:', targetMode);
     } else {
-        log('Jasra mode deactivated');
+        // Restore previous mode on deactivate
+        try {
+            game.settings.set('core', 'messageMode', previousMessageMode);
+        } catch(e) {
+            game.settings.set('core', 'rollMode', previousMessageMode);
+        }
+        log('Jasra mode deactivated → restored:', previousMessageMode);
     }
 }
 
@@ -204,13 +232,8 @@ function setupJasraIntercept() {
         const text = plainContent.replace(/^@Jasra\s*/, '').trim();
         if (!text) return false;
 
-        // Clear jasra mode after intercept
-        jasraActive = false;
-        const btn = document.getElementById('fdb-jasra-btn');
-        if (btn) {
-            btn.setAttribute('aria-pressed', 'false');
-            btn.classList.remove('active');
-        }
+        // Don't clear jasra mode — stays active until user clicks again
+        // So they can send multiple messages to Jasra in a row
 
         const mode = game.settings.get(MODULE_ID, 'chatMode');
         const authorName = game.user.name || 'MJ';
