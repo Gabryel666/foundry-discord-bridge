@@ -235,12 +235,23 @@ export function sendJasraMessage(authorName, text) {
         return;
     }
 
+    // Resolve avatar URL — The Forge stocke souvent l'URL absolue,
+    // mais au cas où ce soit relatif on complète avec l'origine
+    let avatarUrl = undefined;
+    const userAvatar = game.user?.avatar;
+    if (userAvatar) {
+        avatarUrl = userAvatar.startsWith('http')
+            ? userAvatar
+            : window.location.origin + '/' + userAvatar.replace(/^\//, '');
+    }
+
     fetch(webhookUrl, {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
         body: JSON.stringify({
             content: text,
-            username: authorName
+            username: authorName,
+            avatar_url: avatarUrl,
         }),
     }).catch((err) => log('Webhook error:', err));
 }

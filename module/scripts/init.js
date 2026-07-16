@@ -65,24 +65,9 @@ Hooks.once('ready', () => {
         registerChatControl();
 
         // ⛔ Mode lock: when Jasra is active, user cannot change mode manually
-        // Reverr immédiatement au mode forcé par Jasra
-        const jasraTargetMode = { invisible: 'gm', notification: 'gm', public: 'public' };
-        Hooks.on('setting:core.messageMode', (newMode, oldMode) => {
-            if (jasraSettingChange) return;
-            if (jasraActive && newMode !== (jasraTargetMode[game.settings.get(MODULE_ID, 'chatMode')] || 'public')) {
-                jasraSettingChange = true;
-                game.settings.set('core', 'messageMode', oldMode);
-                jasraSettingChange = false;
-            }
-        });
-        Hooks.on('setting:core.rollMode', (newMode, oldMode) => {
-            if (jasraSettingChange) return;
-            if (jasraActive && newMode !== (jasraTargetMode[game.settings.get(MODULE_ID, 'chatMode')] || 'public')) {
-                jasraSettingChange = true;
-                game.settings.set('core', 'rollMode', oldMode);
-                jasraSettingChange = false;
-            }
-        });
+        // In Foundry v14, the mode buttons use split-button internal mechanics,
+        // so setting hooks don't reliably intercept. We block clicks directly.
+        setupModeLock();
     }
 
     Hooks.on('closeApplication', () => {
@@ -321,6 +306,56 @@ function setupJasraIntercept() {
         });
         return true;
     });
+}
+
+// ── Mode Lock: Block manual mode changes when Jasra is active ──────────
+
+function setupModeLock() {
+    const jasraTargetMode = { invisible: 'gm', notification: 'gm', public: 'public' };
+
+    // Intercept clicks on mode buttons (split-button items in v14)
+    function blockManualModeChange(e) {
+        if (!jasraActive) return;
+
+        const targetMode = jasraTargetMode[game.settings.get(MODULE_ID, 'chatMode')] || 'public';
+        const currentMode = game.settings.get('core', 'messageMode') || 'public';
+
+        if (currentMode !== targetMode) {
+            e.preventDefault();
+            e.stopPropagation();
+            e.stopImmediatePropagation();
+
+            // Force back to Jasra's mode
+            jasraSettingChange = true;
+            game.settings.set('core', 'messageMode', targetMode);
+            jasraSettingChange = false;
+
+            // Visually reset the active button
+            const buttons = document.querySelectorAll('#message-modes [data-action="messageMode"]');
+            buttons.forEach(b => {
+                b.classList.toggle('active', b.dataset.mode === targetMode);
+                b.setAttribute('aria-pressed', b.dataset.mode === targetMode ? 'true' : 'false');
+            });
+
+            ui.notifications.warn('Jasra est actif — le mode de chat est verrouillé');
+        }
+    }
+
+    // Observe the DOM for mode buttons and attach click interceptors
+    function attachModeLocks() {
+        const modeContainer = document.getElementById('message-modes');
+        if (!modeContainer) { setTimeout(attachModeLocks, 100); return; }
+
+        modeContainer.querySelectorAll('[data-action="messageMode"]').forEach(btn => {
+            btn.removeEventListener('click', blockManualModeChange, true);
+            btn.addEventListener('click', blockManualModeChange, true); // capture phase
+        });
+    }
+
+    // Initial + reactive attachment
+    Hooks.on('renderChatLog', () => setTimeout(attachModeLocks, 50));
+    Hooks.on('renderChatControls', () => setTimeout(attachModeLocks, 50));
+    attachModeLocks();
 }
 
 // ── Gateway ─────────────────────────────────────────────────────────────
