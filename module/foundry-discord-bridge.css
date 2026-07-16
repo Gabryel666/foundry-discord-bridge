@@ -49,11 +49,6 @@
   object-fit: cover;
 }
 
-/* ── Foundry v14: Hide the ProseMirror Format toolbar ────────────────── */
-#chat menu.editor-menu {
-  display: none !important;
-}
-
 /* ── Config Form ─────────────────────────────────────────────────────── */
 
 .fdb-config-window .window-content {
