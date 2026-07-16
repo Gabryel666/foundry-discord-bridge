@@ -123,7 +123,12 @@ export class GatewayClient {
 
                     // Update button avatar if already injected
                     updateButtonAvatar();
-                } else if (t === 'MESSAGE_CREATE' && d.channel_id === this.#channelId && !d.webhook_id) {
+                } else if (t === 'MESSAGE_CREATE' && d.channel_id === this.#channelId) {
+                    if (d.webhook_id) {
+                        log('MESSAGE_CREATE filtered (webhook):', d.author?.username, d.content?.substring(0, 30));
+                        break;
+                    }
+                    log('MESSAGE_CREATE received from:', d.author?.username, 'content:', d.content?.substring(0, 50));
                     this.#onMessage?.({
                         id: d.id,
                         author: d.member?.nick || d.author?.global_name || d.author?.username,
@@ -172,29 +177,38 @@ function updateButtonAvatar() {
 // ── Discord → Foundry ───────────────────────────────────────────────────
 
 export function onDiscordMessage(msg) {
-    const mode = game.settings.get(MODULE_ID, 'chatMode');
-    const content = `<div class="fdb-message">
-        ${msg.avatar ? `<img src="${msg.avatar}" class="fdb-avatar" />` : ''}
-        <span class="fdb-content">${escapeHtml(msg.content)}</span>
-    </div>`;
+    log('Discord message received:', msg.author, msg.content?.substring(0, 50));
+    try {
+        const mode = game.settings.get(MODULE_ID, 'chatMode');
+        const content = `<div class="fdb-message">
+            ${msg.avatar ? `<img src="${msg.avatar}" class="fdb-avatar" />` : ''}
+            <span class="fdb-content">${escapeHtml(msg.content)}</span>
+        </div>`;
 
-    if (mode === 'public') {
-        ChatMessage.create({
-            content,
-            speaker: { alias: msg.author },
-            type: CONST.CHAT_MESSAGE_TYPES.IC,
-            flags: { [MODULE_ID]: { source: 'discord', discordId: msg.id } },
-        });
-    } else {
-        // Invisible / Notification: whisper to GM only
         const gmIds = game.users.filter(u => u.isGM).map(u => u.id);
-        ChatMessage.create({
-            content,
-            speaker: { alias: msg.author },
-            type: CONST.CHAT_MESSAGE_TYPES.WHISPER,
-            whisper: gmIds,
-            flags: { [MODULE_ID]: { source: 'discord', discordId: msg.id } },
-        });
+        log('Creating ChatMessage, mode:', mode, 'author:', msg.author);
+
+        if (mode === 'public') {
+            ChatMessage.create({
+                content,
+                speaker: { alias: msg.author },
+                type: CONST.CHAT_MESSAGE_TYPES.IC,
+                flags: { [MODULE_ID]: { source: 'discord', discordId: msg.id } },
+            }).then(() => log('ChatMessage created (public)'))
+              .catch(err => log('ChatMessage.create error:', err));
+        } else {
+            // Invisible / Notification: whisper to GM only
+            ChatMessage.create({
+                content,
+                speaker: { alias: msg.author },
+                type: CONST.CHAT_MESSAGE_TYPES.WHISPER,
+                whisper: gmIds,
+                flags: { [MODULE_ID]: { source: 'discord', discordId: msg.id } },
+            }).then(() => log('ChatMessage created (whisper)'))
+              .catch(err => log('ChatMessage.create error:', err));
+        }
+    } catch (err) {
+        log('onDiscordMessage error:', err);
     }
 }
 
