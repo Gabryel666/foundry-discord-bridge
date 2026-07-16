@@ -78,28 +78,28 @@ Hooks.once('ready', () => {
 // ── Chat Control Button — Hooks-based injection ────────────────────────
 
 function registerChatControl() {
-    // Injection initiale via renderChatControls
-    Hooks.on('renderChatControls', () => {
-        setTimeout(tryInjectButton, 200); // attendre que ProseMirror soit stable
-    });
+    tryInjectButton();
 
-    // Fallback: MutationObserver pour ré-injecter si le bouton disparaît
-    // (Foundry re-render le chat en responsive et flingue le DOM)
-    let observer = null;
-    Hooks.once('ready', () => {
-        observer = new MutationObserver(() => {
+    const tryDebounced = () => setTimeout(tryInjectButton, 50);
+    Hooks.on('renderChatLog', tryDebounced);
+    Hooks.on('changeSidebarTab', tryDebounced);
+    Hooks.on('toggleSidebar', tryDebounced);
+    Hooks.on('renderSidebar', tryDebounced);
+    Hooks.on('collapseChatLog', tryDebounced);
+    Hooks.on('renderChatInput', tryDebounced);
+
+    // MutationObserver — réinjecte le bouton s'il disparaît (responsive, etc.)
+    // Initialisé ici directement (pas dans ready, déjà dedans)
+    const chat = document.getElementById('chat');
+    if (chat) {
+        const observer = new MutationObserver(() => {
             if (!document.getElementById('fdb-jasra-btn')) {
                 setTimeout(tryInjectButton, 100);
             }
         });
-        const chat = document.getElementById('chat');
-        if (chat) {
-            observer.observe(chat, { childList: true, subtree: true });
-        }
-    });
-    Hooks.on('closeApplication', () => {
-        if (observer) observer.disconnect();
-    });
+        observer.observe(chat, { childList: true, subtree: true });
+        Hooks.on('closeApplication', () => observer.disconnect());
+    }
 }
 
 function tryInjectButton() {
@@ -107,35 +107,58 @@ function tryInjectButton() {
 
     const btn = createJasraButton();
 
-    // Strategy 1: injecter à côté de #chat-controls (pas dedans !)
-    // Pour éviter de foutre la pagaille dans ProseMirror en responsive
-    const chatControls = document.getElementById('chat-controls');
-    if (chatControls && chatControls.parentElement) {
-        chatControls.parentElement.insertBefore(btn, chatControls);
-        log('Button injected before #chat-controls');
-        updateButtonAvatar();
-        return true;
-    }
-
-    // Strategy 2: foundry v14 — inject into #chat-controls after modes
+    // Strategy 1: Foundry v14 — inject into #chat-controls after modes
     const messageModes = document.getElementById('message-modes');
     if (messageModes && messageModes.parentElement) {
         messageModes.parentElement.insertBefore(btn, messageModes.nextSibling);
-        log('Button injected into #chat-controls (v14 fallback)');
+        log('Button injected into #chat-controls (v14)');
         updateButtonAvatar();
         return true;
     }
 
-    // Strategy 3: #chat-controls container
-    const chatControlsFallback = document.getElementById('chat-controls');
-    if (chatControlsFallback) {
-        chatControlsFallback.appendChild(btn);
-        log('Button injected into #chat-controls (fallback)');
+    // Strategy 2: Foundry v13 — #roll-privacy (legacy split-button)
+    const rollPrivacy = document.getElementById('roll-privacy');
+    if (rollPrivacy) {
+        rollPrivacy.appendChild(btn);
+        log('Button injected into #roll-privacy (v13)');
         updateButtonAvatar();
         return true;
     }
 
-    // Strategy 4: Last resort — inject into #chat
+    // Strategy 3: data-action selector (works both v13 and v14)
+    const modeButtons = document.querySelectorAll('[data-action="messageMode"]');
+    if (modeButtons.length > 0) {
+        const parent = modeButtons[modeButtons.length - 1].parentElement;
+        if (parent && parent !== document.body) {
+            parent.appendChild(btn);
+            log('Button injected via data-action messageMode');
+            updateButtonAvatar();
+            return true;
+        }
+    }
+
+    // Strategy 4: #chat-controls container
+    const chatControls = document.getElementById('chat-controls');
+    if (chatControls) {
+        chatControls.appendChild(btn);
+        log('Button injected into #chat-controls');
+        updateButtonAvatar();
+        return true;
+    }
+
+    // Strategy 5: Insert before chat input
+    const chatMessage = document.getElementById('chat-message');
+    if (chatMessage) {
+        const parent = chatMessage.parentElement;
+        if (parent) {
+            parent.insertBefore(btn, chatMessage);
+            log('Button injected before chat input (fallback)');
+            updateButtonAvatar();
+            return true;
+        }
+    }
+
+    // Strategy 6: Last resort — inject into #chat
     const chat = document.getElementById('chat');
     if (chat) {
         chat.appendChild(btn);
