@@ -78,15 +78,10 @@ Hooks.once('ready', () => {
 // ── Chat Control Button — Hooks-based injection ────────────────────────
 
 function registerChatControl() {
-    tryInjectButton();
-
-    const tryDebounced = () => setTimeout(tryInjectButton, 50);
-    Hooks.on('renderChatLog', tryDebounced);
-    Hooks.on('changeSidebarTab', tryDebounced);
-    Hooks.on('toggleSidebar', tryDebounced);
-    Hooks.on('renderSidebar', tryDebounced);
-    Hooks.on('collapseChatLog', tryDebounced);
-    Hooks.on('renderChatInput', tryDebounced);
+    Hooks.on('renderChatControls', () => {
+        if (document.getElementById('fdb-jasra-btn')) return;
+        setTimeout(tryInjectButton, 50);
+    });
 }
 
 function tryInjectButton() {
