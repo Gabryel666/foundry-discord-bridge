@@ -67,8 +67,13 @@
 
 /* ── Mode Lock: désactiver les boutons de mode quand Jasra est actif ─── */
 
+body.jasra-lock #message-modes,
+body.jasra-lock #message-modes * {
+  pointer-events: none !important;
+  user-select: none !important;
+}
+
 body.jasra-lock #message-modes {
-  pointer-events: none;
   opacity: 0.6;
 }
 
