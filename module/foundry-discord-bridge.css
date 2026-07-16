@@ -41,6 +41,18 @@
   color: #7289da;
 }
 
+#fdb-jasra-btn.active {
+  box-shadow: 0 0 0 2px #5865f2;
+  background: rgba(88, 101, 242, 0.15);
+  border-radius: 4px;
+}
+
+#fdb-jasra-btn[aria-pressed="true"] {
+  box-shadow: 0 0 0 2px #5865f2;
+  background: rgba(88, 101, 242, 0.15);
+  border-radius: 4px;
+}
+
 #fdb-jasra-btn img {
   width: 22px;
   height: 22px;
