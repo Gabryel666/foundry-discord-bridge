@@ -65,6 +65,24 @@
   object-fit: cover;
 }
 
+/* ── Mode Lock: désactiver les boutons de mode quand Jasra est actif ─── */
+
+body.jasra-lock #message-modes {
+  pointer-events: none;
+  opacity: 0.6;
+}
+
+body.jasra-lock #message-modes [data-action="messageMode"] {
+  color: #7a7a7a !important;
+}
+
+body.jasra-lock #message-modes [data-action="messageMode"].active,
+body.jasra-lock #message-modes [data-action="messageMode"][aria-pressed="true"] {
+  box-shadow: none !important;
+  background: transparent !important;
+  color: #7a7a7a !important;
+}
+
 /* ── Config Form ─────────────────────────────────────────────────────── */
 
 .fdb-config-window .window-content {
