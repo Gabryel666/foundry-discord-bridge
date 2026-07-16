@@ -5,6 +5,10 @@
 const MODULE_ID = 'foundry-discord-bridge';
 const log = (...args) => console.log(`[${MODULE_ID}]`, ...args);
 
+// ── Chat message type constants — handle v13/v14 differences ────────────
+const _isV14 = typeof CONST.CHAT_MESSAGE_STYLES !== 'undefined';
+const CHAT_TYPE_WHISPER = _isV14 ? 'ooc' : 'whisper';
+
 const GATEWAY_URL = 'wss://gateway.discord.gg';
 const GATEWAY_VERSION = 10;
 const GATEWAY_ENCODING = 'json';
@@ -201,7 +205,7 @@ export function onDiscordMessage(msg) {
             ChatMessage.create({
                 content,
                 speaker: { alias: msg.author },
-                type: 'whisper',
+                type: CHAT_TYPE_WHISPER,
                 whisper: gmIds,
                 flags: { [MODULE_ID]: { source: 'discord', discordId: msg.id } },
             }).then(() => log('ChatMessage created (whisper)'))

@@ -11,6 +11,16 @@ let gateway = null;
 // Using module-level flag avoids ProseMirror manipulation entirely
 let jasraActive = false;
 
+// Guard: when true, the setting change was made by Jasra's own toggle
+// and should NOT trigger deactivation
+let jasraSettingChange = false;
+
+// ── Chat message type constants — handle v13/v14 differences ────────────
+// v14 removed CONST.CHAT_MESSAGE_TYPES and 'whisper' is no longer a valid type
+// Use 'ooc' for whispers in v14, 'whisper' in v13
+const _isV14 = typeof CONST.CHAT_MESSAGE_STYLES !== 'undefined';
+const CHAT_TYPE_WHISPER = _isV14 ? 'ooc' : 'whisper';
+
 function escapeHtml(text) {
     const el = document.createElement('span');
     el.textContent = text || '';
@@ -39,6 +49,16 @@ Hooks.once('ready', () => {
         setupJasraIntercept();
         setupWhisperPrefixStrip();
         registerChatControl();
+
+        // When user manually changes message mode, deactivate Jasra
+        Hooks.on('setting:core.messageMode', (newMode, oldMode) => {
+            if (jasraSettingChange) return;
+            if (jasraActive) toggleJasraMode();
+        });
+        Hooks.on('setting:core.rollMode', (newMode, oldMode) => {
+            if (jasraSettingChange) return;
+            if (jasraActive) toggleJasraMode();
+        });
     }
 
     Hooks.on('closeApplication', () => {
@@ -188,12 +208,14 @@ function toggleJasraMode() {
             catch(e2) { previousMessageMode = 'public'; }
         }
 
-        // Apply target mode
+        // Apply target mode (guard prevents hook from deactivating us)
+        jasraSettingChange = true;
         try {
             game.settings.set('core', 'messageMode', targetMode);
         } catch(e) {
             game.settings.set('core', 'rollMode', targetMode);
         }
+        jasraSettingChange = false;
 
         const chatInput = document.getElementById('chat-message');
         if (chatInput) chatInput.focus();
@@ -201,11 +223,13 @@ function toggleJasraMode() {
         log('Jasra mode activated → Foundry mode:', targetMode);
     } else {
         // Restore previous mode on deactivate
+        jasraSettingChange = true;
         try {
             game.settings.set('core', 'messageMode', previousMessageMode);
         } catch(e) {
             game.settings.set('core', 'rollMode', previousMessageMode);
         }
+        jasraSettingChange = false;
         log('Jasra mode deactivated → restored:', previousMessageMode);
     }
 }
@@ -244,7 +268,7 @@ function setupJasraIntercept() {
             ChatMessage.create({
                 content: `<div class="fdb-message"><span class="fdb-content">${escapeHtml(text)}</span></div>`,
                 speaker: { alias: authorName },
-                type: 'whisper',
+                type: CHAT_TYPE_WHISPER,
                 whisper: [game.user.id],
                 flags: { [MODULE_ID]: { source: 'jasra-private' } },
             });
@@ -255,7 +279,7 @@ function setupJasraIntercept() {
             ChatMessage.create({
                 content: `<div class="fdb-message"><span class="fdb-content">${escapeHtml(text)}</span></div>`,
                 speaker: { alias: authorName },
-                type: 'whisper',
+                type: CHAT_TYPE_WHISPER,
                 whisper: [game.user.id],
                 flags: { [MODULE_ID]: { source: 'jasra-private' } },
             });
