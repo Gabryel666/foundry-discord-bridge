@@ -87,19 +87,6 @@ function registerChatControl() {
     Hooks.on('renderSidebar', tryDebounced);
     Hooks.on('collapseChatLog', tryDebounced);
     Hooks.on('renderChatInput', tryDebounced);
-
-    // MutationObserver — réinjecte le bouton s'il disparaît (responsive, etc.)
-    // Initialisé ici directement (pas dans ready, déjà dedans)
-    const chat = document.getElementById('chat');
-    if (chat) {
-        const observer = new MutationObserver(() => {
-            if (!document.getElementById('fdb-jasra-btn')) {
-                setTimeout(tryInjectButton, 100);
-            }
-        });
-        observer.observe(chat, { childList: true, subtree: true });
-        Hooks.on('closeApplication', () => observer.disconnect());
-    }
 }
 
 function tryInjectButton() {
