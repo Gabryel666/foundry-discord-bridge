@@ -67,11 +67,11 @@ function tryInjectButton() {
 
     const btn = createJasraButton();
 
-    // ── Strategy 1: Foundry v14 — #message-modes (split-button, exact ID) ──
+    // ── Strategy 1: Foundry v14 — inject into #chat-controls after modes ──
     const messageModes = document.getElementById('message-modes');
-    if (messageModes) {
-        messageModes.appendChild(btn);
-        log('Button injected into #message-modes (v14)');
+    if (messageModes && messageModes.parentElement) {
+        messageModes.parentElement.insertBefore(btn, messageModes.nextSibling);
+        log('Button injected into #chat-controls (v14)');
         updateButtonAvatar();
         return true;
     }
