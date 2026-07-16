@@ -153,6 +153,8 @@ export class GatewayClient {
                         avatar: d.author?.avatar
                             ? `https://cdn.discordapp.com/avatars/${d.author.id}/${d.author.avatar}.png?size=64`
                             : null,
+                        attachments: d.attachments || [],
+                        embeds: d.embeds || [],
                     });
                 }
                 break;
@@ -214,9 +216,34 @@ export function onDiscordMessage(msg) {
     log('Discord message received:', msg.author, msg.content?.substring(0, 50));
     try {
         const mode = game.settings.get(MODULE_ID, 'chatMode');
+
+        // Construire le contenu: texte + images du content + attachments + embeds
+        let bodyHtml = embedImages(msg.content || '');
+
+        // Attachments (fichiers uploadés — images/GIF)
+        if (msg.attachments?.length) {
+            const imgExts = ['png', 'jpg', 'jpeg', 'gif', 'webp', 'bmp', 'svg'];
+            msg.attachments.forEach(att => {
+                const ext = (att.filename || '').split('.').pop()?.toLowerCase();
+                if (att.content_type?.startsWith('image/') || imgExts.includes(ext)) {
+                    bodyHtml += `\n<img src="${att.url}" class="fdb-embed-image" loading="lazy" />`;
+                }
+            });
+        }
+
+        // Embeds (GIF picker, previews de liens — Tenor, GIPHY, etc.)
+        if (msg.embeds?.length) {
+            msg.embeds.forEach(embed => {
+                const imgUrl = embed.image?.url || embed.thumbnail?.url || null;
+                if (imgUrl) {
+                    bodyHtml += `\n<img src="${imgUrl}" class="fdb-embed-image" loading="lazy" />`;
+                }
+            });
+        }
+
         const content = `<div class="fdb-message">
             ${msg.avatar ? `<img src="${msg.avatar}" class="fdb-avatar" />` : ''}
-            <span class="fdb-content">${embedImages(msg.content || '')}</span>
+            <span class="fdb-content">${bodyHtml}</span>
         </div>`;
 
         const gmIds = game.users.filter(u => u.isGM).map(u => u.id);
