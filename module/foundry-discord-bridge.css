@@ -30,12 +30,20 @@
   font-style: italic;
 }
 
-/* ── Jasra Button — Inherit Foundry split-button style ──────────────── */
+/* ── Jasra Button — Inherit Foundry chat control style ───────────────── */
 
 #fdb-jasra-btn {
-  /* Let ui-control class handle size, border, background */
-  /* Only override color for branding */
+  /* Let the parent container handle positioning */
   color: #5865f2;
+  background: none;
+  border: none;
+  cursor: pointer;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  width: 28px;
+  height: 28px;
+  padding: 2px;
 }
 
 #fdb-jasra-btn:hover {

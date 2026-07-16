@@ -48,36 +48,94 @@ function registerChatControl() {
     // Try immediately
     tryInjectButton();
 
-    // Foundry v13 moves the chat input around via _toggleNotifications.
-    // These hooks cover all the moments where the input may appear or move.
+    // Listen for chat rendering — v13 hooks + v14's dedicated hook
     const tryDebounced = () => setTimeout(tryInjectButton, 50);
     Hooks.on('renderChatLog', tryDebounced);
     Hooks.on('changeSidebarTab', tryDebounced);
     Hooks.on('toggleSidebar', tryDebounced);
     Hooks.on('renderSidebar', tryDebounced);
     Hooks.on('collapseChatLog', tryDebounced);
+
+    // Foundry v14: fires when chat input is reparented
+    // Provides elements that were moved so we can target them directly
+    Hooks.on('renderChatInput', tryDebounced);
 }
 
 function tryInjectButton() {
     // Already injected and in DOM?
     if (document.getElementById('fdb-jasra-btn')) return true;
 
-    // Target the roll-privacy split-button container directly
-    const rollPrivacy = document.getElementById('roll-privacy');
-    if (!rollPrivacy) return false;
-
     const btn = createJasraButton();
-    rollPrivacy.appendChild(btn);
-    log('Button injected into #roll-privacy');
-    updateButtonAvatar();
-    return true;
+
+    // ── Strategy 1: Foundry v13 — #roll-privacy (split-button container) ──
+    const rollPrivacy = document.getElementById('roll-privacy');
+    if (rollPrivacy) {
+        rollPrivacy.appendChild(btn);
+        log('Button injected into #roll-privacy (v13)');
+        updateButtonAvatar();
+        return true;
+    }
+
+    // ── Strategy 2: Foundry v14 — Message mode toolbar buttons ──
+    // In v14, mode buttons use data-action="messageMode" in the chat controls bar
+    const modeButtons = document.querySelectorAll('[data-action="messageMode"]');
+    if (modeButtons.length > 0) {
+        const parent = modeButtons[modeButtons.length - 1].parentElement;
+        if (parent && parent !== document.body) {
+            parent.appendChild(btn);
+            log('Button injected into message mode toolbar (v14)');
+            updateButtonAvatar();
+            return true;
+        }
+    }
+
+    // ── Strategy 3: Foundry v14 — #chat-controls container ──
+    const chatControls = document.querySelector('#chat-controls, .chat-controls');
+    if (chatControls) {
+        chatControls.appendChild(btn);
+        log('Button injected into chat controls');
+        updateButtonAvatar();
+        return true;
+    }
+
+    // ── Strategy 4: Foundry — chat footer area ──
+    const chatFooter = document.querySelector('footer.chat-footer, section#chat > footer');
+    if (chatFooter) {
+        chatFooter.appendChild(btn);
+        log('Button injected into chat footer');
+        updateButtonAvatar();
+        return true;
+    }
+
+    // ── Strategy 5: Fallback — insert before chat input ──
+    const chatMessage = document.getElementById('chat-message');
+    if (chatMessage) {
+        const parent = chatMessage.parentElement;
+        if (parent) {
+            parent.insertBefore(btn, chatMessage);
+            log('Button injected before chat input (fallback)');
+            updateButtonAvatar();
+            return true;
+        }
+    }
+
+    // ── Strategy 6: Last resort — inject into #chat itself ──
+    const chat = document.getElementById('chat');
+    if (chat) {
+        chat.appendChild(btn);
+        log('Button injected into #chat (last resort)');
+        updateButtonAvatar();
+        return true;
+    }
+
+    return false;
 }
 
 function createJasraButton() {
     const btn = document.createElement('button');
     btn.type = 'button';
     btn.id = 'fdb-jasra-btn';
-    btn.className = 'ui-control icon fdb-jasra-btn';
+    btn.className = 'fdb-jasra-btn';
     btn.title = game.i18n.localize('FDB.Button.Jasra');
     btn.innerHTML = '<i class="fas fa-ghost"></i>';
 
@@ -113,14 +171,49 @@ function insertJasraPrefix() {
         return;
     }
 
-    if (chatInput.value.startsWith('@Jasra ')) {
+    // Foundry v13: textarea with .value
+    if (chatInput.tagName === 'TEXTAREA') {
+        if (chatInput.value.startsWith('@Jasra ')) {
+            chatInput.focus();
+            return;
+        }
+        chatInput.value = '@Jasra ' + chatInput.value;
         chatInput.focus();
+        chatInput.setSelectionRange(chatInput.value.length, chatInput.value.length);
         return;
     }
 
-    chatInput.value = '@Jasra ' + chatInput.value;
-    chatInput.focus();
-    chatInput.setSelectionRange(chatInput.value.length, chatInput.value.length);
+    // Foundry v14: ProseMirror contenteditable div
+    // Use the ChatInputPlugin API if available, otherwise fallback to textContent
+    if (chatInput.isContentEditable) {
+        // Focus the editor first
+        chatInput.focus();
+
+        // Try ProseMirror API
+        const view = chatInput._pmView || chatInput.closest('[data-pm-view]')?._pmView;
+        if (view && view.dispatch) {
+            const { tr, Selection } = view.state;
+            const doc = view.state.doc;
+            const text = '@Jasra ';
+            if (!doc.textBetween(0, doc.content.size, '\n', '\n').startsWith(text)) {
+                const tr2 = view.state.tr.insertText(text, 0);
+                view.dispatch(tr2);
+            }
+            return;
+        }
+
+        // Fallback: manual DOM manipulation
+        if (!chatInput.textContent.startsWith('@Jasra ')) {
+            chatInput.textContent = '@Jasra ' + chatInput.textContent;
+        }
+        // Place cursor at end
+        const range = document.createRange();
+        const sel = window.getSelection();
+        range.selectNodeContents(chatInput);
+        range.collapse(false);
+        sel.removeAllRanges();
+        sel.addRange(range);
+    }
 }
 
 // ── Intercept @Jasra Messages ───────────────────────────────────────────
