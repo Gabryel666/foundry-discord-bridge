@@ -33,24 +33,28 @@
 /* ── Jasra Button — Inherit native split-button style via ui-control ─── */
 
 #fdb-jasra-btn {
-  /* Only override color for branding — size, border, bg from ui-control icon */
   color: #5865f2;
+  /* Remove Foundry's default focus ring — we use aria-pressed for state */
+  outline: none !important;
+  box-shadow: none !important;
+}
+
+#fdb-jasra-btn:focus,
+#fdb-jasra-btn:focus-visible,
+#fdb-jasra-btn:focus-within {
+  outline: none !important;
+  box-shadow: none !important;
 }
 
 #fdb-jasra-btn:hover {
   color: #7289da;
 }
 
-#fdb-jasra-btn.active {
-  box-shadow: 0 0 0 2px #5865f2;
-  background: rgba(88, 101, 242, 0.15);
-  border-radius: 4px;
-}
-
+#fdb-jasra-btn.active,
 #fdb-jasra-btn[aria-pressed="true"] {
-  box-shadow: 0 0 0 2px #5865f2;
-  background: rgba(88, 101, 242, 0.15);
-  border-radius: 4px;
+  color: #f0c040;
+  box-shadow: inset 0 0 0 1px #f0c040 !important;
+  background: rgba(240, 192, 64, 0.1);
 }
 
 #fdb-jasra-btn img {
