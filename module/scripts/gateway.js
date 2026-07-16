@@ -192,7 +192,7 @@ export function onDiscordMessage(msg) {
             ChatMessage.create({
                 content,
                 speaker: { alias: msg.author },
-                type: CONST.CHAT_MESSAGE_TYPES.IC,
+                type: 'ic',
                 flags: { [MODULE_ID]: { source: 'discord', discordId: msg.id } },
             }).then(() => log('ChatMessage created (public)'))
               .catch(err => log('ChatMessage.create error:', err));
@@ -201,7 +201,7 @@ export function onDiscordMessage(msg) {
             ChatMessage.create({
                 content,
                 speaker: { alias: msg.author },
-                type: CONST.CHAT_MESSAGE_TYPES.WHISPER,
+                type: 'whisper',
                 whisper: gmIds,
                 flags: { [MODULE_ID]: { source: 'discord', discordId: msg.id } },
             }).then(() => log('ChatMessage created (whisper)'))

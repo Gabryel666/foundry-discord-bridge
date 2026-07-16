@@ -2,7 +2,7 @@
   "id": "foundry-discord-bridge",
   "title": "Foundry-Discord Bridge",
   "description": "Pont en temps réel entre le chat Foundry VTT et Discord.",
-  "version": "14.5.2",
+  "version": "14.5.3",
   "compatibility": {
     "minimum": "11",
     "verified": "14",
