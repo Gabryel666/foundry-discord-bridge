@@ -64,14 +64,24 @@ Hooks.once('ready', () => {
         setupWhisperPrefixStrip();
         registerChatControl();
 
-        // When user manually changes message mode, deactivate Jasra
+        // ⛔ Mode lock: when Jasra is active, user cannot change mode manually
+        // Reverr immédiatement au mode forcé par Jasra
+        const jasraTargetMode = { invisible: 'gm', notification: 'gm', public: 'public' };
         Hooks.on('setting:core.messageMode', (newMode, oldMode) => {
             if (jasraSettingChange) return;
-            if (jasraActive) toggleJasraMode();
+            if (jasraActive && newMode !== (jasraTargetMode[game.settings.get(MODULE_ID, 'chatMode')] || 'public')) {
+                jasraSettingChange = true;
+                game.settings.set('core', 'messageMode', oldMode);
+                jasraSettingChange = false;
+            }
         });
         Hooks.on('setting:core.rollMode', (newMode, oldMode) => {
             if (jasraSettingChange) return;
-            if (jasraActive) toggleJasraMode();
+            if (jasraActive && newMode !== (jasraTargetMode[game.settings.get(MODULE_ID, 'chatMode')] || 'public')) {
+                jasraSettingChange = true;
+                game.settings.set('core', 'rollMode', oldMode);
+                jasraSettingChange = false;
+            }
         });
     }
 
@@ -259,6 +269,10 @@ function getPlainText(html) {
 
 function setupJasraIntercept() {
     Hooks.on('preCreateChatMessage', (message, data, options, userId) => {
+        // ⛔ Loop prevention: skip messages created by our own module
+        // (retour Discord→Foundry, ou les whispers créés par l'intercept lui-même)
+        if (data.flags?.[MODULE_ID]?.source) return true;
+
         const rawContent = data.content || '';
         const plainContent = getPlainText(rawContent);
 
