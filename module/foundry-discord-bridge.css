@@ -23,6 +23,15 @@
   color: #dcddde;
 }
 
+.fdb-message .fdb-embed-image {
+  max-width: 100%;
+  max-height: 400px;
+  border-radius: 6px;
+  margin: 4px 0;
+  display: block;
+  object-fit: contain;
+}
+
 /* Notification "[MJ] échange avec Jasra..." */
 .fdb-notification {
   color: #72767d;

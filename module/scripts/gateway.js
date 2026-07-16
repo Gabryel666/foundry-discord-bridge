@@ -193,13 +193,30 @@ function updateButtonAvatar() {
 
 // ── Discord → Foundry ───────────────────────────────────────────────────
 
+/** Transforme les URLs d'images en balises <img> dans du texte déjà raw */
+function embedImages(rawText) {
+    const imageRegex = /(https?:\/\/[^\s<]*?\.(?:png|jpg|jpeg|gif|webp|bmp|svg)(?:\?[^\s<]*)?)/gi;
+    const parts = rawText.split(imageRegex);
+    let result = '';
+    for (let i = 0; i < parts.length; i++) {
+        if (i % 2 === 0) {
+            // Partie texte — échapper le HTML
+            result += escapeHtml(parts[i]);
+        } else {
+            // URL d'image — balise img directe
+            result += `<img src="${parts[i]}" class="fdb-embed-image" loading="lazy" />`;
+        }
+    }
+    return result;
+}
+
 export function onDiscordMessage(msg) {
     log('Discord message received:', msg.author, msg.content?.substring(0, 50));
     try {
         const mode = game.settings.get(MODULE_ID, 'chatMode');
         const content = `<div class="fdb-message">
             ${msg.avatar ? `<img src="${msg.avatar}" class="fdb-avatar" />` : ''}
-            <span class="fdb-content">${escapeHtml(msg.content)}</span>
+            <span class="fdb-content">${embedImages(msg.content || '')}</span>
         </div>`;
 
         const gmIds = game.users.filter(u => u.isGM).map(u => u.id);
