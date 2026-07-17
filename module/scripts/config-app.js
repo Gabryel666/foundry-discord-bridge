@@ -125,27 +125,22 @@ export class BridgeConfig extends FormApplication {
                 allOk = false;
             }
 
-            // 4. Webhook (envoi d'un message test)
+            // 4. Webhook (vérification GET)
             if (webhookUrl) {
                 try {
-                    const testResp = await fetch(webhookUrl, {
-                        method: 'POST',
-                        headers: { 'Content-Type': 'application/json' },
-                        body: JSON.stringify({ content: '🔄 Test bridge Foundry → Discord OK', username: 'Bridge Test' }),
-                    });
-                    if (testResp.ok) {
-                        const msgData = await testResp.json();
-                        results.push('✅ Foundry → Discord: message test envoyé');
-                        fetch('https://discord.com/api/webhooks/' + webhookUrl.split('/').slice(-2).join('/') + '/messages/' + msgData.id, { method: 'DELETE' }).catch(() => {});
-                    } else if (testResp.status === 404) {
-                        results.push('❌ Foundry → Discord: webhook introuvable');
+                    const resp = await fetch(webhookUrl, { method: 'GET' });
+                    if (resp.ok) {
+                        const data = await resp.json();
+                        results.push('✅ Webhook: actif (#' + (data.name || '?') + ')');
+                    } else if (resp.status === 404) {
+                        results.push('❌ Webhook: introuvable (supprimé ?)');
                         allOk = false;
                     } else {
-                        results.push('❌ Foundry → Discord: erreur ' + testResp.status);
+                        results.push('❌ Webhook: erreur ' + resp.status);
                         allOk = false;
                     }
                 } catch (e) {
-                    results.push('❌ Foundry → Discord: webhook injoignable');
+                    results.push('❌ Webhook: injoignable');
                     allOk = false;
                 }
             } else {
