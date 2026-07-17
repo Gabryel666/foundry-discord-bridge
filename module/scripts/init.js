@@ -73,10 +73,6 @@ Hooks.once('ready', () => {
         // so setting hooks don't reliably intercept. We block clicks directly.
         setupModeLock();
     }
-
-    Hooks.on('closeApplication', () => {
-        if (gateway) { gateway.close(); gateway = null; }
-    });
 });
 
 // ── Chat Control Button — MutationObserver unique ──────────────────────
