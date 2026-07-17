@@ -162,3 +162,12 @@ body.jasra-lock #message-modes [data-action="messageMode"][aria-pressed="true"] 
 .fdb-config-window button[type="submit"]:hover {
   background: #4752c4;
 }
+
+/* ── Embedded video (Tenor/GIPHY MP4) ──────────────────────────────── */
+.fdb-message .fdb-embed-video {
+  max-width: 100%;
+  max-height: 400px;
+  border-radius: 6px;
+  margin: 4px 0;
+  display: block;
+}

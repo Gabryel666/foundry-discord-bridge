@@ -243,11 +243,24 @@ export function onDiscordMessage(msg) {
         // Embeds (GIF picker, previews de liens — Tenor, GIPHY, etc.)
         // Skip si l'URL est déjà dans le texte ou les attachments
         if (msg.embeds?.length) {
+            log('Embeds:', msg.embeds.map(e => ({
+                type: e.type,
+                img: (e.image?.url || '').substring(0, 80),
+                vid: (e.video?.url || '').substring(0, 80),
+                thumb: (e.thumbnail?.url || '').substring(0, 80),
+            })));
             msg.embeds.forEach(embed => {
+                // Images statiques + GIFs (embed.image.url)
                 const imgUrl = embed.image?.url || embed.thumbnail?.url || null;
                 if (imgUrl && !alreadyEmbedded.has(imgUrl)) {
                     bodyHtml += `\n<img src="${imgUrl}" class="fdb-embed-image" loading="lazy" />`;
                     alreadyEmbedded.add(imgUrl);
+                }
+                // Vidéos animées (Tenor/GIPHY — MP4 dans embed.video.url)
+                const videoUrl = embed.video?.url || null;
+                if (videoUrl && !alreadyEmbedded.has(videoUrl)) {
+                    bodyHtml += `\n<video src="${videoUrl}" class="fdb-embed-video" autoplay loop muted playsinline></video>`;
+                    alreadyEmbedded.add(videoUrl);
                 }
             });
         }
