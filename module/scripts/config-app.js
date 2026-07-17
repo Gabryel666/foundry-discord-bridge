@@ -80,13 +80,13 @@ export class BridgeConfig extends FormApplication {
             statusEl.className = 'fdb-channel-status fdb-test-ok';
         });
 
-        // Quand on choisit un salon, mettre à jour le champ caché
+        // Quand on choisit un salon, mettre à jour le champ texte + sauvegarder direct
         html.find('#fdb-channel-select').change((ev) => {
             const val = ev.currentTarget.value;
             html.find('[name="discordChannelId"]').val(val);
         });
 
-        // Test de connexion complet (gateway, serveur, salon, messages, webhook)
+        // Test de connexion complet : gateway, serveur, salon, webhook
         html.find('#fdb-test-connection').click(async (ev) => {
             ev.preventDefault();
             const btn = ev.currentTarget;
@@ -143,35 +143,48 @@ export class BridgeConfig extends FormApplication {
                 allOk = false;
             }
 
-            // 4. Message ascendant (Discord → Foundry)
-            const msgCount = bridge?.messageCount || 0;
-            if (msgCount > 0) {
-                results.push(`✅ Messages reçus: ${msgCount} depuis la connexion`);
-            } else {
-                results.push('⚠️ Messages reçus: aucun pour l\'instant (normal si personne n\'a parlé)');
-            }
-
-            // 5. Webhook (message descendant Foundry → Discord)
+            // 4. Test webhook : envoi d'un message test Foundry → Discord
             if (webhookUrl) {
                 try {
-                    const resp = await fetch(webhookUrl, { method: 'GET' });
-                    if (resp.ok) {
-                        const data = await resp.json();
-                        results.push(`✅ Webhook: actif (#${data.name || 'inconnu'})`);
-                    } else if (resp.status === 404) {
-                        results.push('❌ Webhook: introuvable (supprimé ?) — crées-en un dans les paramètres du salon');
+                    const testResp = await fetch(webhookUrl, {
+                        method: 'POST',
+                        headers: { 'Content-Type': 'application/json' },
+                        body: JSON.stringify({
+                            content: '🔄 Test bridge Foundry → Discord — OK',
+                            username: 'Foundry Bridge Test',
+                        }),
+                    });
+                    if (testResp.ok) {
+                        const msgData = await testResp.json();
+                        results.push('✅ Foundry → Discord: message test envoyé avec succès');
+                        // Supprimer le message test
+                        const msgUrl = `https://discord.com/api/webhooks/${webhookUrl.split('/').slice(-2).join('/')}/messages/${msgData.id}`;
+                        fetch(msgUrl, { method: 'DELETE' }).catch(() => {});
+                    } else if (testResp.status === 404) {
+                        results.push('❌ Foundry → Discord: webhook introuvable (supprimé ?)');
                         allOk = false;
                     } else {
-                        results.push(`❌ Webhook: erreur ${resp.status}`);
+                        results.push(`❌ Foundry → Discord: erreur ${testResp.status}`);
                         allOk = false;
                     }
                 } catch (e) {
-                    results.push('❌ Webhook: injoignable — vérifie l\'URL');
+                    results.push('❌ Foundry → Discord: webhook injoignable');
                     allOk = false;
                 }
             } else {
-                results.push('❌ Webhook: URL non définie — les messages Foundry → Discord ne passeront pas');
+                results.push('❌ Webhook: URL non définie');
                 allOk = false;
+            }
+
+            // 5. Gateway → vérifier que le channel configuré correspond
+            if (bridge && bridge.connected && channelId) {
+                const matching = bridge.guildChannels?.[guildId]?.some(c => c.id === channelId);
+                if (matching) {
+                    results.push('✅ Discord → Foundry: gateway à l\'écoute sur le bon salon');
+                } else if (guildId && channelId) {
+                    results.push('❌ Discord → Foundry: le channel ID ne correspond à aucun salon du serveur');
+                    allOk = false;
+                }
             }
 
             statusEl.innerHTML = results.join('<br>');
