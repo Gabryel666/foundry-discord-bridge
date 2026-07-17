@@ -250,17 +250,20 @@ export function onDiscordMessage(msg) {
                 thumb: (e.thumbnail?.url || '').substring(0, 80),
             })));
             msg.embeds.forEach(embed => {
-                // Images statiques + GIFs (embed.image.url)
-                const imgUrl = embed.image?.url || embed.thumbnail?.url || null;
-                if (imgUrl && !alreadyEmbedded.has(imgUrl)) {
-                    bodyHtml += `\n<img src="${imgUrl}" class="fdb-embed-image" loading="lazy" />`;
-                    alreadyEmbedded.add(imgUrl);
-                }
                 // Vidéos animées (Tenor/GIPHY — MP4 dans embed.video.url)
+                // Priorité : si vidéo dispo, c'est l'animé → on saute l'image statique
                 const videoUrl = embed.video?.url || null;
                 if (videoUrl && !alreadyEmbedded.has(videoUrl)) {
                     bodyHtml += `\n<video src="${videoUrl}" class="fdb-embed-video" autoplay loop muted playsinline></video>`;
                     alreadyEmbedded.add(videoUrl);
+                }
+                // Images (embed.image.url) — seulement si pas de vidéo
+                if (!videoUrl) {
+                    const imgUrl = embed.image?.url || embed.thumbnail?.url || null;
+                    if (imgUrl && !alreadyEmbedded.has(imgUrl)) {
+                        bodyHtml += `\n<img src="${imgUrl}" class="fdb-embed-image" loading="lazy" />`;
+                        alreadyEmbedded.add(imgUrl);
+                    }
                 }
             });
         }
