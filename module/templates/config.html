@@ -1,17 +1,18 @@
 <form autocomplete="off">
     <div class="form-group">
         <label>{{localize "FDB.Settings.Token.Name"}}</label>
-        <input type="password" name="discordToken" value="{{discordToken}}" placeholder="MTxxxxxxxxxxxxxxx" />
+        <input type="password" name="discordToken" value="{{discordToken}}" placeholder="..." />
         <p class="notes">{{localize "FDB.Settings.Token.Hint"}}</p>
     </div>
 
     <div class="form-group">
         <label>{{localize "FDB.Settings.GuildId.Name"}}</label>
-        <input type="text" name="discordGuildId" value="{{discordGuildId}}" placeholder="729311581019570186" />
+        <input type="text" name="discordGuildId" value="{{discordGuildId}}" placeholder="..." />
         <p class="notes">{{localize "FDB.Settings.GuildId.Hint"}}</p>
     </div>
 
     <div class="form-group">
+        <label>{{localize "FDB.Settings.ChannelId.Name"}}</label>
         <div class="fdb-channel-row">
             <select name="discordChannelId" id="fdb-channel-select" class="fdb-channel-select">
                 {{#if discordChannelId}}

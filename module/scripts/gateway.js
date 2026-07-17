@@ -174,13 +174,12 @@ export class GatewayClient {
                     };
                     log(`Ready as ${d.user.username} (${d.user.id})`);
                     updateButtonAvatar();
-                } else if (t === 'MESSAGE_CREATE' && d.channel_id === this.#channelId) {
+                } else if (t === 'MESSAGE_CREATE') {
+                    log('MESSAGE_CREATE reçu — channel:', d.channel_id, '| attendu:', this.#channelId, '| auteur:', d.author?.username, '| contenu:', (d.content || '').substring(0, 60));
+                    if (d.channel_id !== this.#channelId) break;
                     _messageCount++;
-                    if (d.webhook_id) {
-                        debugLog('MESSAGE_CREATE filtered (webhook):', d.author?.username, d.content?.substring(0, 30));
-                        break;
-                    }
-                    debugLog('MESSAGE_CREATE received from:', d.author?.username, 'content:', d.content?.substring(0, 50));
+                    if (d.webhook_id) { break; }
+                    debugLog('  → traité');
                     this.#onMessage?.({
                         id: d.id,
                         author: d.member?.nick || d.author?.global_name || d.author?.username,
