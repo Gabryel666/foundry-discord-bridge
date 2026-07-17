@@ -154,10 +154,16 @@ export class BridgeConfig extends FormApplication {
             }
 
             // 5. Discord → Foundry
-            if (bridge && bridge.connected && channelId) {
-                const matching = bridge.guildChannels?.[guildId]?.some(c => c.id === channelId);
-                results.push(matching ? '✅ Discord → Foundry: gateway à l\'écoute sur le bon salon' : '❌ Discord → Foundry: salon invalide');
-                if (!matching) allOk = false;
+            if (bridge && bridge.connected) {
+                const activeId = bridge.activeChannelId || '(inconnu)';
+                if (channelId && activeId !== channelId) {
+                    results.push('❌ Discord → Foundry: le gateway écoute le salon ' + activeId + ' mais le formulaire a ' + channelId + ' — sauvegarde et recharge Foundry');
+                    allOk = false;
+                } else if (channelId) {
+                    const matching = bridge.guildChannels?.[guildId]?.some(c => c.id === channelId);
+                    results.push(matching ? '✅ Discord → Foundry: gateway à l\'écoute sur #' + (bridge.guildChannels[guildId].find(c => c.id === channelId)?.name || channelId) : '❌ Discord → Foundry: salon invalide');
+                    if (!matching) allOk = false;
+                }
             }
 
             statusEl.innerHTML = results.join('<br>');
@@ -173,6 +179,12 @@ export class BridgeConfig extends FormApplication {
         for (const [key, value] of Object.entries(data)) {
             await game.settings.set(MODULE_ID, key, value);
         }
+
+        // Mettre à jour le channel du gateway sans reconnecter
+        if (data.discordChannelId && window.__fdbBridge?.gatewayInstance?.setChannel) {
+            window.__fdbBridge.gatewayInstance.setChannel(data.discordChannelId);
+        }
+
         ui.notifications.info('Foundry-Discord Bridge | Configuration sauvegardée');
     }
 }

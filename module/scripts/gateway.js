@@ -58,6 +58,7 @@ function showWebhookRecovered() {
 let _guildChannels = {};
 let _messageCount = 0;
 let _guildName = '';
+let _activeChannelId = '';
 
 // Pont pour la config — évite les imports croisés entre modules
 window.__fdbBridge = {
@@ -66,6 +67,7 @@ window.__fdbBridge = {
     get botName() { return botInfo.username || 'Bot Discord'; },
     get messageCount() { return _messageCount; },
     get guildName() { return _guildName; },
+    get activeChannelId() { return _activeChannelId; },
 };
 
 // ── Gateway Client ──────────────────────────────────────────────────────
@@ -85,6 +87,15 @@ export class GatewayClient {
         this.#guildId = guildId;
         this.#channelId = channelId;
         this.#onMessage = onMessage;
+        _activeChannelId = channelId || '';
+        debugLog('GatewayClient created with channel:', channelId);
+    }
+
+    /** Mettre à jour le channel ID filtré sans reconnecter */
+    setChannel(channelId) {
+        this.#channelId = channelId || '';
+        _activeChannelId = this.#channelId;
+        log('Gateway channel updated to:', this.#channelId);
     }
 
     get connected() { return this.#connected; }

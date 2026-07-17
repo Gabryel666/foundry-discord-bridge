@@ -60,6 +60,10 @@ Hooks.once('ready', () => {
 
     if (game.user.isGM) {
         connectGateway();
+
+        // Exposer l'instance du gateway pour que la config puisse le mettre à jour
+        window.__fdbBridge = window.__fdbBridge || {};
+        window.__fdbBridge.gatewayInstance = gateway;
         setupJasraIntercept();
         setupWhisperPrefixStrip();
         registerChatControl();
