@@ -86,21 +86,98 @@ export class BridgeConfig extends FormApplication {
             html.find('[name="discordChannelId"]').val(val);
         });
 
-        // Test de connexion simplifié (vérifie le gateway)
-        html.find('#fdb-test-connection').click((ev) => {
+        // Test de connexion complet (gateway, serveur, salon, messages, webhook)
+        html.find('#fdb-test-connection').click(async (ev) => {
             ev.preventDefault();
+            const btn = ev.currentTarget;
+            btn.disabled = true;
+            btn.innerHTML = '<i class="fas fa-spinner fa-spin"></i> Test...';
+
+            const guildId = html.find('[name="discordGuildId"]').val();
+            const channelId = html.find('[name="discordChannelId"]').val();
+            const webhookUrl = html.find('[name="discordWebhookUrl"]').val();
             const statusEl = document.getElementById('fdb-test-result');
             const bridge = window.__fdbBridge;
 
-            if (!bridge || !bridge.connected) {
-                statusEl.textContent = '❌ Gateway Discord non connecté. Vérifie le token et que Foundry a accès au gateway.';
-                statusEl.className = 'fdb-test-result fdb-test-fail';
-                return;
+            const results = [];
+            let allOk = true;
+
+            // 1. Gateway / Token
+            if (bridge && bridge.connected) {
+                results.push(`✅ Gateway: connecté (${bridge.botName})`);
+            } else {
+                results.push('❌ Gateway: non connecté — vérifie le token et recharge Foundry');
+                allOk = false;
             }
 
-            const botName = bridge.botName || 'Bot Discord';
-            statusEl.textContent = `✅ Gateway connecté en tant que ${botName}`;
-            statusEl.className = 'fdb-test-result fdb-test-ok';
+            // 2. Serveur
+            if (guildId && bridge?.guildChannels?.[guildId]) {
+                results.push(`✅ Serveur: ${bridge.guildName || guildId} (${bridge.guildChannels[guildId].length} salons)`);
+            } else if (!guildId) {
+                results.push('❌ Serveur: ID non défini');
+                allOk = false;
+            } else {
+                results.push('❌ Serveur: introuvable dans le cache — vérifie l\'ID');
+                allOk = false;
+            }
+
+            // 3. Salon
+            if (guildId && channelId && bridge?.guildChannels?.[guildId]) {
+                const ch = bridge.guildChannels[guildId].find(c => c.id === channelId);
+                if (ch) {
+                    if (ch.type === 0) {
+                        results.push(`✅ Salon: #${ch.name} (textuel)`);
+                    } else {
+                        const typeNames = { 0: 'textuel', 2: 'vocal', 4: 'catégorie', 5: 'annonce', 11: 'thread' };
+                        results.push(`⚠️ Salon: #${ch.name} (${typeNames[ch.type] || 'type ' + ch.type} — privilégie un salon textuel)`);
+                    }
+                } else if (bridge.guildChannels[guildId].some(c => c.name === channelId)) {
+                    results.push('❌ Salon: l\'ID ne correspond pas. As-tu mis un nom au lieu d\'un ID ?');
+                    allOk = false;
+                } else {
+                    results.push('❌ Salon: introuvable dans ce serveur');
+                    allOk = false;
+                }
+            } else if (!channelId) {
+                results.push('❌ Salon: non défini');
+                allOk = false;
+            }
+
+            // 4. Message ascendant (Discord → Foundry)
+            const msgCount = bridge?.messageCount || 0;
+            if (msgCount > 0) {
+                results.push(`✅ Messages reçus: ${msgCount} depuis la connexion`);
+            } else {
+                results.push('⚠️ Messages reçus: aucun pour l\'instant (normal si personne n\'a parlé)');
+            }
+
+            // 5. Webhook (message descendant Foundry → Discord)
+            if (webhookUrl) {
+                try {
+                    const resp = await fetch(webhookUrl, { method: 'GET' });
+                    if (resp.ok) {
+                        const data = await resp.json();
+                        results.push(`✅ Webhook: actif (#${data.name || 'inconnu'})`);
+                    } else if (resp.status === 404) {
+                        results.push('❌ Webhook: introuvable (supprimé ?) — crées-en un dans les paramètres du salon');
+                        allOk = false;
+                    } else {
+                        results.push(`❌ Webhook: erreur ${resp.status}`);
+                        allOk = false;
+                    }
+                } catch (e) {
+                    results.push('❌ Webhook: injoignable — vérifie l\'URL');
+                    allOk = false;
+                }
+            } else {
+                results.push('❌ Webhook: URL non définie — les messages Foundry → Discord ne passeront pas');
+                allOk = false;
+            }
+
+            statusEl.innerHTML = results.join('<br>');
+            statusEl.className = `fdb-test-result ${allOk ? 'fdb-test-ok' : 'fdb-test-fail'}`;
+            btn.disabled = false;
+            btn.innerHTML = '<i class="fas fa-plug"></i> ' + game.i18n.localize('FDB.Config.TestConnection');
         });
     }
 

@@ -56,12 +56,16 @@ function showWebhookRecovered() {
 // ── Guild channels cache (peuplé depuis le gateway, pas de REST) ────
 
 let _guildChannels = {};
+let _messageCount = 0;
+let _guildName = '';
 
 // Pont pour la config — évite les imports croisés entre modules
 window.__fdbBridge = {
     get guildChannels() { return _guildChannels; },
     get connected() { return Object.keys(_guildChannels).length > 0; },
-    get botName() { return botInfo.username; },
+    get botName() { return botInfo.username || 'Bot Discord'; },
+    get messageCount() { return _messageCount; },
+    get guildName() { return _guildName; },
 };
 
 // ── Gateway Client ──────────────────────────────────────────────────────
@@ -160,6 +164,7 @@ export class GatewayClient {
                     log(`Ready as ${d.user.username} (${d.user.id})`);
                     updateButtonAvatar();
                 } else if (t === 'MESSAGE_CREATE' && d.channel_id === this.#channelId) {
+                    _messageCount++;
                     if (d.webhook_id) {
                         debugLog('MESSAGE_CREATE filtered (webhook):', d.author?.username, d.content?.substring(0, 30));
                         break;
@@ -176,6 +181,7 @@ export class GatewayClient {
                         embeds: d.embeds || [],
                     });
                 } else if (t === 'GUILD_CREATE' && d.id === this.#guildId) {
+                    _guildName = d.name || '';
                     // Trier par position pour respecter l'ordre Discord
                     const sorted = (d.channels || []).sort((a, b) => (a.position || 0) - (b.position || 0));
                     _guildChannels[d.id] = sorted;
