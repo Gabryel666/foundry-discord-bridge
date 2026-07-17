@@ -1,5 +1,6 @@
 const MODULE_ID = 'foundry-discord-bridge';
-const log = (...args) => console.log(`[${MODULE_ID}]`, ...args);
+
+import { getCachedChannels, isGatewayReady } from './gateway.js';
 
 export class BridgeConfig extends FormApplication {
     static get defaultOptions() {
@@ -26,193 +27,58 @@ export class BridgeConfig extends FormApplication {
     activateListeners(html) {
         super.activateListeners(html);
 
-        // Test de connexion
-        html.find('#fdb-test-connection').click(async (ev) => {
+        // Charger les salons depuis le cache du gateway Discord
+        html.find('#fdb-load-channels').click((ev) => {
             ev.preventDefault();
             const btn = ev.currentTarget;
-            btn.disabled = true;
-            btn.innerHTML = '<i class="fas fa-spinner fa-spin"></i> Test...';
-
-            const token = html.find('[name="discordToken"]').val();
-            const guildId = html.find('[name="discordGuildId"]').val();
-            const channelId = html.find('[name="discordChannelId"]').val();
-            const webhookUrl = html.find('[name="discordWebhookUrl"]').val();
-            const statusEl = document.getElementById('fdb-test-result');
-
-            const results = [];
-            let allOk = true;
-
-            // Test 1: Token Discord
-            if (token) {
-                try {
-                    const resp = await fetch('https://discord.com/api/v10/users/@me', {
-                        headers: { 'Authorization': `Bot ${token}` }
-                    });
-                    if (resp.ok) {
-                        const data = await resp.json();
-                        results.push(`✅ Bot: ${data.username}#${data.discriminator || ''}`);
-                    } else {
-                        results.push(`❌ Token: ${resp.status} ${resp.statusText}`);
-                        allOk = false;
-                    }
-                } catch (e) {
-                    results.push(`❌ Token: requête échouée`);
-                    allOk = false;
-                }
-            } else {
-                results.push(`❌ Token: non défini`);
-                allOk = false;
-            }
-
-            // Test 2: Guild
-            if (token && guildId) {
-                try {
-                    const resp = await fetch(`https://discord.com/api/v10/guilds/${guildId}`, {
-                        headers: { 'Authorization': `Bot ${token}` }
-                    });
-                    if (resp.ok) {
-                        const data = await resp.json();
-                        results.push(`✅ Serveur: ${data.name}`);
-                    } else if (resp.status === 404) {
-                        results.push(`❌ Serveur: introuvable (mauvais ID ?)`);
-                        allOk = false;
-                    } else {
-                        results.push(`❌ Serveur: ${resp.status}`);
-                        allOk = false;
-                    }
-                } catch (e) {
-                    results.push(`❌ Serveur: requête échouée`);
-                    allOk = false;
-                }
-            } else if (!guildId) {
-                results.push(`❌ Serveur: ID non défini`);
-                allOk = false;
-            }
-
-            // Test 3: Channel
-            if (token && channelId) {
-                try {
-                    const resp = await fetch(`https://discord.com/api/v10/channels/${channelId}`, {
-                        headers: { 'Authorization': `Bot ${token}` }
-                    });
-                    if (resp.ok) {
-                        const data = await resp.json();
-                        results.push(`✅ Salon: #${data.name}`);
-                    } else if (resp.status === 404) {
-                        results.push(`❌ Salon: introuvable`);
-                        allOk = false;
-                    } else {
-                        results.push(`❌ Salon: ${resp.status}`);
-                        allOk = false;
-                    }
-                } catch (e) {
-                    results.push(`❌ Salon: requête échouée`);
-                    allOk = false;
-                }
-            } else if (!channelId) {
-                results.push(`❌ Salon: ID non défini`);
-                allOk = false;
-            }
-
-            // Test 4: Webhook
-            if (webhookUrl) {
-                try {
-                    const resp = await fetch(webhookUrl, { method: 'GET' });
-                    if (resp.ok) {
-                        const data = await resp.json();
-                        results.push(`✅ Webhook: #${data.channel_id ? 'actif' : 'inactif'}`);
-                    } else if (resp.status === 404) {
-                        results.push(`❌ Webhook: introuvable`);
-                        allOk = false;
-                    } else {
-                        results.push(`❌ Webhook: ${resp.status}`);
-                        allOk = false;
-                    }
-                } catch (e) {
-                    results.push(`❌ Webhook: requête échouée`);
-                    allOk = false;
-                }
-            } else {
-                results.push(`❌ Webhook: non défini`);
-                allOk = false;
-            }
-
-            statusEl.innerHTML = results.join('<br>');
-            statusEl.className = `fdb-test-result ${allOk ? 'fdb-test-ok' : 'fdb-test-fail'}`;
-            btn.disabled = false;
-            btn.innerHTML = '<i class="fas fa-plug"></i> ' + game.i18n.localize('FDB.Config.TestConnection');
-        });
-
-        // Charger les salons
-        html.find('#fdb-load-channels').click(async (ev) => {
-            ev.preventDefault();
-            const btn = ev.currentTarget;
-            btn.disabled = true;
-            btn.innerHTML = '<i class="fas fa-spinner fa-spin"></i>...';
-
-            const token = html.find('[name="discordToken"]').val();
             const guildId = html.find('[name="discordGuildId"]').val();
             const select = html.find('#fdb-channel-select');
             const statusEl = document.getElementById('fdb-channel-status');
 
-            if (!token || !guildId) {
-                statusEl.textContent = '⚠️ Remplis d\'abord le token et l\'ID du serveur.';
+            if (!guildId) {
+                statusEl.textContent = '⚠️ Remplis d\'abord l\'ID du serveur.';
                 statusEl.className = 'fdb-channel-status fdb-test-fail';
-                btn.disabled = false;
-                btn.innerHTML = '<i class="fas fa-sync"></i> ' + game.i18n.localize('FDB.Config.LoadChannels');
                 return;
             }
 
-            try {
-                const resp = await fetch(`https://discord.com/api/v10/guilds/${guildId}/channels`, {
-                    headers: { 'Authorization': `Bot ${token}` }
-                });
-
-                if (!resp.ok) {
-                    statusEl.textContent = `❌ Erreur ${resp.status} — vérifie le token et l'ID du serveur.`;
-                    statusEl.className = 'fdb-channel-status fdb-test-fail';
-                    btn.disabled = false;
-                    btn.innerHTML = '<i class="fas fa-sync"></i> ' + game.i18n.localize('FDB.Config.LoadChannels');
-                    return;
-                }
-
-                const channels = await resp.json();
-                // Filtrer salons textuels (type 0) + threads publics (type 11)
-                const textChannels = channels.filter(c => c.type === 0);
-                const threadChannels = channels.filter(c => c.type === 11);
-
-                // Grouper : textuels d'abord, threads ensuite
-                const all = [...textChannels, ...threadChannels];
-
-                select.empty();
-                const defaultOpt = document.createElement('option');
-                defaultOpt.value = '';
-                defaultOpt.textContent = '— Choisir un salon —';
-                select.append(defaultOpt);
-                all.forEach(ch => {
-                    const opt = document.createElement('option');
-                    opt.value = ch.id;
-                    opt.textContent = (ch.type === 11 ? '🧵 ' : '#') + ' ' + ch.name;
-                    select.append(opt);
-                });
-
-                // Sélectionner celui déjà configuré
-                const currentId = html.find('[name="discordChannelId"]').val();
-                if (currentId) select.val(currentId);
-
-                statusEl.textContent = `✅ ${textChannels.length} salons textuels trouvés. Sélectionne un salon dans la liste.`;
-                statusEl.className = 'fdb-channel-status fdb-test-ok';
-                log(`Loaded ${textChannels.length} text + ${threadChannels.length} thread channels`);
-            } catch (e) {
-                statusEl.textContent = `❌ Erreur réseau: ${e.message}`;
+            if (!isGatewayReady()) {
+                statusEl.textContent = '⏳ Connexion au gateway Discord en cours… réessaie dans quelques secondes.';
                 statusEl.className = 'fdb-channel-status fdb-test-fail';
+                return;
             }
 
-            btn.disabled = false;
-            btn.innerHTML = '<i class="fas fa-sync"></i> ' + game.i18n.localize('FDB.Config.LoadChannels');
+            const channels = getCachedChannels(guildId);
+            if (!channels) {
+                statusEl.textContent = '❌ Serveur introuvable dans le cache. Vérifie l\'ID du serveur.';
+                statusEl.className = 'fdb-channel-status fdb-test-fail';
+                return;
+            }
+
+            // Filtrer salons textuels (type 0)
+            const textChannels = channels.filter(c => c.type === 0);
+
+            select.empty();
+            const defaultOpt = document.createElement('option');
+            defaultOpt.value = '';
+            defaultOpt.textContent = '— Choisir un salon —';
+            select.append(defaultOpt);
+
+            textChannels.forEach(ch => {
+                const opt = document.createElement('option');
+                opt.value = ch.id;
+                opt.textContent = '# ' + ch.name;
+                select.append(opt);
+            });
+
+            // Pré-sélectionner celui déjà configuré
+            const currentId = html.find('[name="discordChannelId"]').val();
+            if (currentId) select.val(currentId);
+
+            statusEl.textContent = `✅ ${textChannels.length} salons textuels trouvés. Sélectionne un salon.`;
+            statusEl.className = 'fdb-channel-status fdb-test-ok';
         });
 
-        // Quand on choisit un salon dans la liste, mettre à jour le champ ID
+        // Quand on choisit un salon, mettre à jour le champ ID
         html.find('#fdb-channel-select').change((ev) => {
             const val = ev.currentTarget.value;
             if (val) {
@@ -222,8 +88,6 @@ export class BridgeConfig extends FormApplication {
     }
 
     async _updateObject(event, formData) {
-        // Les checkbox décochées ne sont pas incluses dans formData —
-        // forcer false si 'debug' est absent
         const data = foundry.utils.expandObject(formData);
         if (!('debug' in data)) data.debug = false;
 

@@ -53,6 +53,18 @@ function showWebhookRecovered() {
     ui.notifications.info('✅ Webhook Discord — connexion rétablie');
 }
 
+// ── Guild channels cache (peuplé depuis le gateway, pas de REST) ────
+
+let _guildChannels = {};
+
+export function getCachedChannels(guildId) {
+    return _guildChannels[guildId] || null;
+}
+
+export function isGatewayReady() {
+    return Object.keys(_guildChannels).length > 0;
+}
+
 // ── Gateway Client ──────────────────────────────────────────────────────
 
 export class GatewayClient {
@@ -164,6 +176,9 @@ export class GatewayClient {
                         attachments: d.attachments || [],
                         embeds: d.embeds || [],
                     });
+                } else if (t === 'GUILD_CREATE' && d.id === this.#guildId) {
+                    _guildChannels[d.id] = d.channels || [];
+                    log('Cached', _guildChannels[d.id].length, 'channels for guild', d.id);
                 }
                 break;
         }

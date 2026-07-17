@@ -172,7 +172,7 @@ body.jasra-lock #message-modes [data-action="messageMode"][aria-pressed="true"] 
   display: block;
 }
 
-/* ── Config Form v2 — Channel selector, test, debug ────────────────── */
+/* ── Config Form v2 — Debug toggle, password input ──────────────────── */
 .fdb-config-window .fdb-section-title {
   color: #5865f2;
   font-size: 14px;

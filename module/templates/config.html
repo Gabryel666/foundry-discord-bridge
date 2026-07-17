@@ -13,16 +13,16 @@
 
     <div class="form-group">
         <label>{{localize "FDB.Settings.ChannelId.Name"}}</label>
+        <input type="hidden" name="discordChannelId" value="{{discordChannelId}}" />
         <div class="fdb-channel-row">
-            <input type="text" name="discordChannelId" value="{{discordChannelId}}" placeholder="1409510784513605712" />
+            <select id="fdb-channel-select" class="fdb-channel-select">
+                <option value="">— {{localize "FDB.Config.SelectChannel"}} —</option>
+            </select>
             <button type="button" id="fdb-load-channels" class="fdb-btn-secondary">
-                <i class="fas fa-sync"></i> {{localize "FDB.Config.LoadChannels"}}
+                <i class="fas fa-list"></i> {{localize "FDB.Config.LoadChannels"}}
             </button>
         </div>
         <p class="notes">{{localize "FDB.Settings.ChannelId.Hint"}}</p>
-        <select id="fdb-channel-select" class="fdb-channel-select">
-            <option value="">— {{localize "FDB.Config.SelectChannel"}} —</option>
-        </select>
         <div id="fdb-channel-status" class="fdb-channel-status"></div>
     </div>
 
@@ -40,13 +40,6 @@
             <input type="checkbox" name="debug" id="fdb-debug" {{#if debug}}checked{{/if}} />
             <label for="fdb-debug">{{localize "FDB.Settings.Debug.Hint"}}</label>
         </div>
-    </div>
-
-    <div class="form-group">
-        <button type="button" id="fdb-test-connection" class="fdb-btn-primary">
-            <i class="fas fa-plug"></i> {{localize "FDB.Config.TestConnection"}}
-        </button>
-        <div id="fdb-test-result" class="fdb-test-result"></div>
     </div>
 
     <button type="submit">
