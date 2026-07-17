@@ -4,10 +4,11 @@
 
 const MODULE_ID = 'foundry-discord-bridge';
 const log = (...args) => console.log(`[${MODULE_ID}]`, ...args);
+const debugLog = (...args) => {
+    try { if (game.settings?.get(MODULE_ID, 'debug')) console.log(`[${MODULE_ID}][debug]`, ...args); } catch(e) {}
+};
 
 // ── Chat message type constants — handle v13/v14 differences ────────────
-// v14: type → style (numeric from CHAT_MESSAGE_STYLES), whisper array controls visibility
-// v13: type (string: 'whisper', 'ic', 'other'), no style field
 const _isV14 = typeof CONST.CHAT_MESSAGE_STYLES !== 'undefined';
 const MSG = {
     v14: _isV14,
@@ -41,6 +42,16 @@ const Intent = {
 // Bot info (populated on READY)
 let botInfo = { id: null, username: null, avatar: null };
 export function getBotInfo() { return botInfo; }
+
+// ── Webhook health alert (notification Foundry native) ───────────────
+
+function showWebhookError(message) {
+    ui.notifications.error('⚠️ ' + message);
+}
+
+function showWebhookRecovered() {
+    ui.notifications.info('✅ Webhook Discord — connexion rétablie');
+}
 
 // ── Gateway Client ──────────────────────────────────────────────────────
 
@@ -130,22 +141,19 @@ export class GatewayClient {
                     this.#resumeUrl = d.resume_gateway_url;
                     this.#connected = true;
 
-                    // Store bot info for avatar
                     botInfo = {
                         id: d.user.id,
                         username: d.user.username,
                         avatar: d.user.avatar
                     };
                     log(`Ready as ${d.user.username} (${d.user.id})`);
-
-                    // Update button avatar if already injected
                     updateButtonAvatar();
                 } else if (t === 'MESSAGE_CREATE' && d.channel_id === this.#channelId) {
                     if (d.webhook_id) {
-                        log('MESSAGE_CREATE filtered (webhook):', d.author?.username, d.content?.substring(0, 30));
+                        debugLog('MESSAGE_CREATE filtered (webhook):', d.author?.username, d.content?.substring(0, 30));
                         break;
                     }
-                    log('MESSAGE_CREATE received from:', d.author?.username, 'content:', d.content?.substring(0, 50));
+                    debugLog('MESSAGE_CREATE received from:', d.author?.username, 'content:', d.content?.substring(0, 50));
                     this.#onMessage?.({
                         id: d.id,
                         author: d.member?.nick || d.author?.global_name || d.author?.username,
@@ -196,14 +204,21 @@ function updateButtonAvatar() {
 // ── Discord → Foundry ───────────────────────────────────────────────────
 
 /** Transforme les URLs d'images en balises <img> dans du texte déjà raw */
-function embedImages(rawText) {
+function embedImages(rawText, embedPageUrls = new Set()) {
     const imageRegex = /(https?:\/\/[^\s<]*?\.(?:png|jpg|jpeg|gif|webp|bmp|svg)(?:\?[^\s<]*)?)/gi;
     const parts = rawText.split(imageRegex);
     let result = '';
     for (let i = 0; i < parts.length; i++) {
         if (i % 2 === 0) {
-            // Partie texte — échapper le HTML
-            result += escapeHtml(parts[i]);
+            // Partie texte — échapper le HTML, et retirer les URLs
+            // déjà couvertes par un embed (GIPHY, Tenor, etc.)
+            let text = parts[i];
+            if (embedPageUrls.size > 0) {
+                text = text.replace(/https?:\/\/[^\s<"]+/gi, url => {
+                    return embedPageUrls.has(url) ? '' : url;
+                });
+            }
+            result += escapeHtml(text);
         } else {
             // URL d'image — balise img directe
             result += `<img src="${parts[i]}" class="fdb-embed-image" loading="lazy" />`;
@@ -213,12 +228,16 @@ function embedImages(rawText) {
 }
 
 export function onDiscordMessage(msg) {
-    log('Discord message received:', msg.author, msg.content?.substring(0, 50));
+    debugLog('Discord message received:', msg.author, msg.content?.substring(0, 50));
     try {
         const mode = game.settings.get(MODULE_ID, 'chatMode');
 
+        // Collecter les URLs des pages d'embed (GIPHY, Tenor, etc.) pour
+        // les retirer du texte brut — l'embed fournit déjà le média
+        const embedPageUrls = new Set((msg.embeds || []).map(e => e.url).filter(Boolean));
+
         // Construire le contenu: texte + images du content + attachments + embeds
-        let bodyHtml = embedImages(msg.content || '');
+        let bodyHtml = embedImages(msg.content || '', embedPageUrls);
 
         // Collecter les URLs déjà embarquées dans le texte pour dédoublonner les embeds
         const alreadyEmbedded = new Set();
@@ -243,7 +262,7 @@ export function onDiscordMessage(msg) {
         // Embeds (GIF picker, previews de liens — Tenor, GIPHY, etc.)
         // Skip si l'URL est déjà dans le texte ou les attachments
         if (msg.embeds?.length) {
-            log('Embeds:', msg.embeds.map(e => ({
+            debugLog('Embeds:', msg.embeds.map(e => ({
                 type: e.type,
                 img: (e.image?.url || '').substring(0, 80),
                 vid: (e.video?.url || '').substring(0, 80),
@@ -274,22 +293,21 @@ export function onDiscordMessage(msg) {
         </div>`;
 
         const gmIds = game.users.filter(u => u.isGM).map(u => u.id);
-        log('Creating ChatMessage, mode:', mode, 'author:', msg.author);
+        debugLog('Creating ChatMessage, mode:', mode, 'author:', msg.author);
 
         if (mode === 'public') {
             ChatMessage.create(Object.assign({
                 content,
                 speaker: { alias: msg.author },
                 flags: { [MODULE_ID]: { source: 'discord', discordId: msg.id } },
-            }, MSG.public())).then(() => log('ChatMessage created (public)'))
+            }, MSG.public())).then(() => debugLog('ChatMessage created (public)'))
               .catch(err => log('ChatMessage.create error:', err));
         } else {
-            // Invisible / Notification: whisper to GM only
             ChatMessage.create(Object.assign({
                 content,
                 speaker: { alias: msg.author },
                 flags: { [MODULE_ID]: { source: 'discord', discordId: msg.id } },
-            }, MSG.whisper(gmIds))).then(() => log('ChatMessage created (whisper)'))
+            }, MSG.whisper(gmIds))).then(() => debugLog('ChatMessage created (whisper)'))
               .catch(err => log('ChatMessage.create error:', err));
         }
     } catch (err) {
@@ -306,8 +324,6 @@ export function sendJasraMessage(authorName, text) {
         return;
     }
 
-    // Resolve avatar URL — The Forge stocke souvent l'URL absolue,
-    // mais au cas où ce soit relatif on complète avec l'origine
     let avatarUrl = undefined;
     const userAvatar = game.user?.avatar;
     if (userAvatar) {
@@ -324,18 +340,28 @@ export function sendJasraMessage(authorName, text) {
             username: authorName,
             avatar_url: avatarUrl,
         }),
-    }).catch((err) => log('Webhook error:', err));
+    }).then(resp => {
+        if (!resp.ok) {
+            showWebhookError(`Webhook Discord : erreur ${resp.status}`);
+            log('Webhook error:', resp.status, resp.statusText);
+        } else {
+            showWebhookRecovered();
+        }
+    }).catch((err) => {
+        showWebhookError('Webhook Discord injoignable — vérifie la config ou la connexion réseau.');
+        log('Webhook fetch error:', err);
+    });
 }
 
 // ── Whisper prefix handling for Jasra messages ─────────────────────────
 
 export function setupWhisperPrefixStrip() {
-    Hooks.on('renderChatMessage', (message, html, data) => {
+    Hooks.on('renderChatMessageHTML', (message, html, data) => {
         try {
             if (!message.flags?.[MODULE_ID]?.source) return;
             const src = message.flags[MODULE_ID].source;
 
-            const el = html instanceof jQuery ? html[0] : html;
+            const el = html instanceof HTMLElement ? html : html?.querySelector ? html : null;
             if (!el) return;
 
             // For MJ→Jasra whispers: replace "À: [MJ name]" with "À: Jasra"
@@ -349,8 +375,6 @@ export function setupWhisperPrefixStrip() {
                         .replace(/chuchote à .+/i, 'chuchote à Jasra');
                 }
             }
-
-            // Discord→Foundry: keep the "A : Meneur" whisper header as-is
         } catch (e) {
             // Never break message rendering
         }

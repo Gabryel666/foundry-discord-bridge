@@ -171,3 +171,125 @@ body.jasra-lock #message-modes [data-action="messageMode"][aria-pressed="true"] 
   margin: 4px 0;
   display: block;
 }
+
+/* ── Config Form v2 — Channel selector, test, debug ────────────────── */
+.fdb-config-window .fdb-section-title {
+  color: #5865f2;
+  font-size: 14px;
+  font-weight: 700;
+  margin: 16px 0 10px;
+  padding-bottom: 4px;
+  border-bottom: 1px solid #3a3a5c;
+}
+
+.fdb-config-window .fdb-channel-row {
+  display: flex;
+  gap: 6px;
+}
+.fdb-config-window .fdb-channel-row input {
+  flex: 1;
+}
+
+.fdb-config-window .fdb-btn-secondary {
+  background: #3a3a5c;
+  color: #e0e0e0;
+  border: 1px solid #4a4a6c;
+  border-radius: 4px;
+  padding: 6px 10px;
+  font-size: 12px;
+  cursor: pointer;
+  white-space: nowrap;
+}
+.fdb-config-window .fdb-btn-secondary:hover {
+  background: #4a4a6c;
+}
+.fdb-config-window .fdb-btn-secondary:disabled {
+  opacity: 0.5;
+  cursor: not-allowed;
+}
+
+.fdb-config-window .fdb-btn-primary {
+  width: 100%;
+  background: #5865f2;
+  color: #ffffff;
+  border: none;
+  border-radius: 4px;
+  padding: 8px;
+  font-size: 13px;
+  font-weight: 600;
+  cursor: pointer;
+}
+.fdb-config-window .fdb-btn-primary:hover {
+  background: #4752c4;
+}
+.fdb-config-window .fdb-btn-primary:disabled {
+  opacity: 0.5;
+  cursor: not-allowed;
+}
+
+.fdb-config-window .fdb-channel-select {
+  width: 100%;
+  background: #0d0d1a;
+  border: 1px solid #3a3a5c;
+  border-radius: 4px;
+  color: #e0e0e0;
+  padding: 6px 8px;
+  font-size: 13px;
+  margin-top: 6px;
+}
+.fdb-config-window .fdb-channel-select option {
+  background: #0d0d1a;
+  color: #e0e0e0;
+}
+
+.fdb-channel-status,
+.fdb-test-result {
+  margin-top: 6px;
+  font-size: 12px;
+  line-height: 1.5;
+  padding: 4px 8px;
+  border-radius: 3px;
+}
+.fdb-test-ok {
+  color: #8fdf8f;
+  background: rgba(80, 200, 80, 0.1);
+}
+.fdb-test-fail {
+  color: #f0a0a0;
+  background: rgba(200, 80, 80, 0.1);
+}
+
+.fdb-config-window .fdb-toggle-row {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+}
+.fdb-config-window .fdb-toggle-row input[type="checkbox"] {
+  margin: 0;
+  accent-color: #5865f2;
+}
+.fdb-config-window .fdb-toggle-row label {
+  font-weight: 400;
+  font-size: 12px;
+  margin: 0;
+  display: inline;
+}
+
+.fdb-config-window input[type="password"] {
+  width: 100%;
+  background: #0d0d1a;
+  border: 1px solid #3a3a5c;
+  border-radius: 4px;
+  color: #ffffff;
+  padding: 6px 8px;
+  font-size: 13px;
+  font-family: monospace;
+}
+.fdb-config-window input[type="password"]::placeholder {
+  color: #555580;
+}
+.fdb-config-window input[type="password"]:focus {
+  border-color: #5865f2;
+  outline: none;
+  box-shadow: 0 0 4px rgba(88, 101, 242, 0.4);
+}

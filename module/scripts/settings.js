@@ -28,7 +28,17 @@ export function registerSettings() {
         }
     });
 
-    // 3. Config menu button
+    // 3. Debug mode
+    game.settings.register(MODULE_ID, 'debug', {
+        name: game.i18n.localize('FDB.Settings.Debug.Name'),
+        hint: game.i18n.localize('FDB.Settings.Debug.Hint'),
+        scope: 'world',
+        config: false,  // géré dans la config form
+        type: Boolean,
+        default: false
+    });
+
+    // 4. Config menu button
     game.settings.registerMenu(MODULE_ID, 'config', {
         name: game.i18n.localize('FDB.ConfigMenu.Name'),
         label: game.i18n.localize('FDB.ConfigMenu.Label'),
