@@ -13,6 +13,7 @@
   "FDB.Config.LoadChannels": "Salons",
   "FDB.Config.SelectChannel": "Sélectionner un salon",
   "FDB.Config.Advanced": "Avancé",
+  "FDB.Config.TestConnection": "Tester la connexion",
   "FDB.Settings.Token.Name": "Token du bot Discord",
   "FDB.Settings.Token.Hint": "Token du bot Discord pour écouter les messages (visible uniquement par le MJ)",
   "FDB.Settings.GuildId.Name": "ID du serveur Discord",

@@ -13,6 +13,7 @@
   "FDB.Config.LoadChannels": "Channels",
   "FDB.Config.SelectChannel": "Select a channel",
   "FDB.Config.Advanced": "Advanced",
+  "FDB.Config.TestConnection": "Test Connection",
   "FDB.Settings.Token.Name": "Discord Bot Token",
   "FDB.Settings.Token.Hint": "Discord bot token to listen to messages (visible only to the GM)",
   "FDB.Settings.GuildId.Name": "Discord Server ID",

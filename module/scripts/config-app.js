@@ -1,7 +1,5 @@
 const MODULE_ID = 'foundry-discord-bridge';
 
-import { getCachedChannels, isGatewayReady } from './gateway.js';
-
 export class BridgeConfig extends FormApplication {
     static get defaultOptions() {
         return foundry.utils.mergeObject(super.defaultOptions, {
@@ -27,10 +25,9 @@ export class BridgeConfig extends FormApplication {
     activateListeners(html) {
         super.activateListeners(html);
 
-        // Charger les salons depuis le cache du gateway Discord
+        // Charger les salons depuis le cache du gateway (via window.__fdbBridge)
         html.find('#fdb-load-channels').click((ev) => {
             ev.preventDefault();
-            const btn = ev.currentTarget;
             const guildId = html.find('[name="discordGuildId"]').val();
             const select = html.find('#fdb-channel-select');
             const statusEl = document.getElementById('fdb-channel-status');
@@ -41,14 +38,15 @@ export class BridgeConfig extends FormApplication {
                 return;
             }
 
-            if (!isGatewayReady()) {
+            const bridge = window.__fdbBridge;
+            if (!bridge || !bridge.guildChannels) {
                 statusEl.textContent = '⏳ Connexion au gateway Discord en cours… réessaie dans quelques secondes.';
                 statusEl.className = 'fdb-channel-status fdb-test-fail';
                 return;
             }
 
-            const channels = getCachedChannels(guildId);
-            if (!channels) {
+            const channels = bridge.guildChannels[guildId];
+            if (!channels || !channels.length) {
                 statusEl.textContent = '❌ Serveur introuvable dans le cache. Vérifie l\'ID du serveur.';
                 statusEl.className = 'fdb-channel-status fdb-test-fail';
                 return;
@@ -72,18 +70,37 @@ export class BridgeConfig extends FormApplication {
 
             // Pré-sélectionner celui déjà configuré
             const currentId = html.find('[name="discordChannelId"]').val();
-            if (currentId) select.val(currentId);
+            if (currentId) {
+                select.val(currentId);
+                // Forcer le déclenchement de change pour que le hidden soit à jour
+                select.trigger('change');
+            }
 
             statusEl.textContent = `✅ ${textChannels.length} salons textuels trouvés. Sélectionne un salon.`;
             statusEl.className = 'fdb-channel-status fdb-test-ok';
         });
 
-        // Quand on choisit un salon, mettre à jour le champ ID
+        // Quand on choisit un salon, mettre à jour le champ caché
         html.find('#fdb-channel-select').change((ev) => {
             const val = ev.currentTarget.value;
-            if (val) {
-                html.find('[name="discordChannelId"]').val(val);
+            html.find('[name="discordChannelId"]').val(val);
+        });
+
+        // Test de connexion simplifié (vérifie le gateway)
+        html.find('#fdb-test-connection').click((ev) => {
+            ev.preventDefault();
+            const statusEl = document.getElementById('fdb-test-result');
+            const bridge = window.__fdbBridge;
+
+            if (!bridge || !bridge.connected) {
+                statusEl.textContent = '❌ Gateway Discord non connecté. Vérifie le token et que Foundry a accès au gateway.';
+                statusEl.className = 'fdb-test-result fdb-test-fail';
+                return;
             }
+
+            const botName = bridge.botName || 'Bot Discord';
+            statusEl.textContent = `✅ Gateway connecté en tant que ${botName}`;
+            statusEl.className = 'fdb-test-result fdb-test-ok';
         });
     }
 

@@ -57,13 +57,12 @@ function showWebhookRecovered() {
 
 let _guildChannels = {};
 
-export function getCachedChannels(guildId) {
-    return _guildChannels[guildId] || null;
-}
-
-export function isGatewayReady() {
-    return Object.keys(_guildChannels).length > 0;
-}
+// Pont pour la config — évite les imports croisés entre modules
+window.__fdbBridge = {
+    get guildChannels() { return _guildChannels; },
+    get connected() { return Object.keys(_guildChannels).length > 0; },
+    get botName() { return botInfo.username; },
+};
 
 // ── Gateway Client ──────────────────────────────────────────────────────
 
@@ -177,8 +176,10 @@ export class GatewayClient {
                         embeds: d.embeds || [],
                     });
                 } else if (t === 'GUILD_CREATE' && d.id === this.#guildId) {
-                    _guildChannels[d.id] = d.channels || [];
-                    log('Cached', _guildChannels[d.id].length, 'channels for guild', d.id);
+                    // Trier par position pour respecter l'ordre Discord
+                    const sorted = (d.channels || []).sort((a, b) => (a.position || 0) - (b.position || 0));
+                    _guildChannels[d.id] = sorted;
+                    log('Cached', sorted.length, 'channels for guild', d.id);
                 }
                 break;
         }
