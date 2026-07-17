@@ -336,16 +336,20 @@ function connectGateway() {
     const guildId = game.settings.get(MODULE_ID, 'discordGuildId');
     const channelId = game.settings.get(MODULE_ID, 'discordChannelId');
 
-    if (!token || !guildId || !channelId) {
-        log('Missing config');
+    if (!token || !guildId) {
+        log('Token ou serveur manquant — gateway non créé');
         return;
     }
 
     gateway = new GatewayClient({
-        token, guildId, channelId,
+        token, guildId, channelId: channelId || '',
         onMessage: onDiscordMessage
     });
     gateway.connect();
-    ui.notifications.info('Foundry-Discord Bridge | Connecté à Discord');
+    if (channelId) {
+        ui.notifications.info('Foundry-Discord Bridge | Connecté à Discord');
+    } else {
+        log('Gateway créé (en attente du channel via la config)');
+    }
     log('Gateway connecting...');
 }
