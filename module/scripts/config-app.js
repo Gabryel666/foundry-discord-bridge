@@ -6,7 +6,9 @@ export class BridgeConfig extends FormApplication {
             id: 'fdb-config',
             title: game.i18n.localize('FDB.ConfigMenu.Name'),
             template: `modules/${MODULE_ID}/templates/config.html`,
-            width: 520,
+            width: 620,
+            height: 520,
+            resizable: true,
             closeOnSubmit: true,
             classes: ['fdb-config-window']
         });
