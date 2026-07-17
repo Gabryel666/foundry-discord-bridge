@@ -178,7 +178,6 @@ export class GatewayClient {
                     log('MESSAGE_CREATE reçu — channel:', d.channel_id, '| attendu:', this.#channelId, '| auteur:', d.author?.username, '| contenu:', (d.content || '').substring(0, 60));
                     if (d.channel_id !== this.#channelId) break;
                     _messageCount++;
-                    if (d.webhook_id) { break; }
                     debugLog('  → traité');
                     this.#onMessage?.({
                         id: d.id,
